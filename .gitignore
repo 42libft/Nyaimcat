@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.dist/
+build/
+.eggs/
+
+# Venv
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local config
+.env
+*.csv
+
