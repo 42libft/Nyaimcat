@@ -243,3 +243,77 @@ def find_game_urls_from_parent(parent_url: str, limit: int = 6) -> List[str]:
         if not html:
             return []
         return _extract_game_urls_from_html(html, parent_url, limit)
+
+import re
+import asyncio
+from bs4 import BeautifulSoup
+
+async def _collect_game_texts_with_playwright(group_url: str, max_games: int = 6):
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        ctx = await browser.new_context(user_agent="Mozilla/5.0 (ESCL Collector Bot)")
+        page = await ctx.new_page()
+        await page.goto(group_url, wait_until="domcontentloaded", timeout=30000)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(600)
+
+        results = []  # (game_no, text)
+
+        for i in range(1, max_games + 1):
+            clicked = False
+            candidates = [
+                page.get_by_role("tab", name=re.compile(rf"^GAME\s*{i}\b", re.I)),
+                page.get_by_text(re.compile(rf"^GAME\s*{i}\b", re.I)),
+                page.locator(f"text=GAME {i}"),
+                page.locator(f"text=GAME{i}"),
+            ]
+            for loc in candidates:
+                try:
+                    await loc.first.click(timeout=2000)
+                    clicked = True
+                    break
+                except:
+                    pass
+
+            payload = None
+            try:
+                btn = page.locator("text=詳細な試合結果をコピー").first
+                await btn.wait_for(state="visible", timeout=8000)
+
+                handle = await btn.element_handle()
+                if handle:
+                    attr = await handle.get_attribute("data-clipboard-text")
+                    if attr and attr.strip():
+                        payload = attr.strip()
+
+                    if not payload:
+                        parent = await handle.evaluate_handle("el => el.closest('[data-clipboard-text]')")
+                        if parent:
+                            attr = await parent.get_attribute("data-clipboard-text")
+                            if attr and attr.strip():
+                                payload = attr.strip()
+
+                if not payload:
+                    html = await page.content()
+                    soup = BeautifulSoup(html, "html.parser")
+                    for el in soup.find_all(attrs={"data-clipboard-text": True}):
+                        cand = (el.get("data-clipboard-text") or "").strip()
+                        if cand:
+                            payload = cand
+                            break
+            except:
+                pass
+
+            if payload:
+                results.append((i, payload))
+
+        await browser.close()
+        return results
+
+def collect_game_texts_from_group(group_url: str, max_games: int = 6):
+    try:
+        return asyncio.run(_collect_game_texts_with_playwright(group_url, max_games))
+    except:
+        return []

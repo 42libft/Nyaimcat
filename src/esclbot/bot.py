@@ -143,30 +143,30 @@ async def escl_finish(inter: discord.Interaction):
 @BOT.tree.command(name="escl_from_parent", description="親ページURLから自動でG1〜G6を収集してCSVを返す（貼付不要）")
 @app_commands.describe(parent_url="その日のスクリム親ページURL", scrim_group="G1〜G5（任意）")
 async def escl_from_parent(inter: discord.Interaction, parent_url: str, scrim_group: Optional[str] = None):
-    await inter.response.defer(thinking=True, ephemeral=False)
+        await inter.response.defer(thinking=True, ephemeral=False)
 
-    urls = await find_game_urls_from_parent(parent_url, limit=6)
-    if not urls:
-        await inter.followup.send("親ページからゲームURLを見つけられませんでした。URLが正しいか確認してください。")
+    from .scraper import collect_game_texts_from_group
+    pairs = collect_game_texts_from_group(parent_url, max_games=6)
+
+    if not pairs:
+        await inter.followup.send("親ページから GAME 1〜6 の詳細テキストを取得できませんでした。URLをご確認ください。")
         return
 
-    rows: List[pd.DataFrame] = []
+    rows = []
     sid = guess_scrim_id(parent_url)
-    for i, url in enumerate(urls, start=1):
-        txt = await extract_text_from_url(url)
-        if not txt:
-            await inter.followup.send(f"ゲーム{i}の抽出に失敗：{url}\n（ページの『詳細な試合結果をコピー』テキストでの貼付なら確実です）")
+    for game_no, txt in pairs:
+        try:
+            df = parse_pasted_text(txt)
+        except Exception as e:
+            await inter.followup.send(f"GAME {game_no} の解析に失敗しました: {e}")
             return
-        df = parse_pasted_text(txt)
-        df.insert(0, "game_no", i)
+        df.insert(0, "game_no", game_no)
         df.insert(0, "scrim_id", sid or "")
         df.insert(0, "scrim_group", scrim_group or "")
         rows.append(df)
 
     df_all = pd.concat(rows, ignore_index=True)
-
     df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
-
     fname = f"ESCL_{(scrim_group or 'G?')}_{(sid or 'unknown')}.csv"
     await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
 
@@ -233,4 +233,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
