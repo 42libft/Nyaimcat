@@ -1,11 +1,12 @@
-# 置き換え用
+# src/esclbot/scraper.py
 from __future__ import annotations
 import re
 from typing import Optional, List
+
 import httpx
 from bs4 import BeautifulSoup
 
-# 「詳細」テキストに必須の列（順不同でOK）
+# 「詳細な試合結果」だけを受理するための必須ヘッダ
 REQUIRED_HEADERS = {
     "team_name","team_num","player_name","character","placement",
     "kills","assists","damage","shots","hits","accuracy",
@@ -13,7 +14,7 @@ REQUIRED_HEADERS = {
 }
 
 def _looks_like_detailed_payload(text: str) -> bool:
-    """詳細テキストの見分け：ヘッダが十分そろっているか"""
+    """詳細テキストかどうかをヘッダで判定"""
     if not text or "team_name" not in text:
         return False
     head = text.splitlines()[0].strip().lower()
@@ -43,42 +44,68 @@ def extract_text_from_url(url: str, timeout_sec: int = 15) -> Optional[str]:
     for el in soup.find_all(["button", "a", "div", "span"], string=True):
         label = el.get_text(strip=True)
         if "詳細な試合結果をコピー" in label:
-            # 同じ階層/親に data-clipboard-text が付いているケースも拾う
             target = el if el.has_attr("data-clipboard-text") else el.find_parent(attrs={"data-clipboard-text": True})
             if target and target.has_attr("data-clipboard-text"):
                 txt = target["data-clipboard-text"].strip()
                 if _looks_like_detailed_payload(txt):
                     return txt
 
-    # 2) data-clipboard-text を総当りし、詳細ヘッダのものだけ返す
+    # 2) data-clipboard-text 総当り（詳細ヘッダだけ受理）
     candidates = []
     for el in soup.find_all(attrs={"data-clipboard-text": True}):
         txt = el.get("data-clipboard-text", "").strip()
         if _looks_like_detailed_payload(txt):
             candidates.append(txt)
     if candidates:
-        # 一番長い＝詳細になりやすい
         return max(candidates, key=len)
 
-    # 3) pre/code/textarea のテキストにも詳細ヘッダがあれば採用
+    # 3) pre/code/textarea
     for tag in soup.find_all(["pre", "code", "textarea"]):
         txt = tag.get_text("\n").strip()
         if _looks_like_detailed_payload(txt):
             return txt
 
-    # 4) script 埋め込みからの回収（エスケープ解除して判定）
+    # 4) script 埋め込みから回収
     for sc in soup.find_all("script"):
         raw = sc.get_text(" ").strip()
         if "team_name" in raw:
-            # JS内の文字列をざっくり復元
             txt = raw.replace("\\n", "\n").replace("\\t", "\t")
-            # 不要な末尾を切るヒューリスティック
             txt = txt.split("];", 1)[0]
-            # team_name 行から最後までを拾う
             m = re.search(r"(team_name[^\r\n]+(?:[\r\n].+)*)", txt)
             if m:
                 payload = m.group(1).strip()
                 if _looks_like_detailed_payload(payload):
                     return payload
     return None
+
+def guess_scrim_id(url: Optional[str]) -> Optional[str]:
+    """URLから scrim_id を推定（/scrims/<scrim_id>/...）"""
+    if not url:
+        return None
+    m = re.search(r"/scrims/([0-9a-f\-]+)/?", url)
+    return m.group(1) if m else None
+
+def find_game_urls_from_parent(parent_url: str, limit: int = 6) -> List[str]:
+    """親ページから /scrims/<scrimId>/<gameId> のリンクを最大6件拾う"""
+    html = fetch_html(parent_url)
+    if not html:
+        return []
+    soup = BeautifulSoup(html, "html.parser")
+    found: List[str] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if re.search(r"/scrims/[0-9a-f\-]+/[0-9a-f\-]+", href):
+            if href.startswith("http"):
+                url = href
+            else:
+                base = re.match(r"^(https?://[^/]+)", parent_url)
+                if base:
+                    url = base.group(1) + href
+                else:
+                    continue
+            if url not in found:
+                found.append(url)
+        if len(found) >= limit:
+            break
+    return found
 
