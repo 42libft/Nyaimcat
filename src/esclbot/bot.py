@@ -201,18 +201,20 @@ async def escl_from_urls(inter: discord.Interaction, urls: str, scrim_group: Opt
 # =========================
 @BOT.event
 async def on_ready():
-    # 開発中はギルド限定で即時同期（環境変数 GUILD_ID を設定した場合）
-    guild_id = os.getenv("GUILD_ID")
-    if guild_id and guild_id.isdigit():
-        try:
-            guild = discord.Object(id=int(guild_id))
-            await BOT.tree.sync(guild=guild)
-            print(f"Slash commands synced to guild {guild_id}.")
-        except Exception as e:
-            print(f"Guild sync failed: {e}")
-            await BOT.tree.sync()
+    gid = os.getenv("GUILD_ID")
+    if gid and gid.isdigit():
+        guild = discord.Object(id=int(gid))
+        # ★ 追加: グローバル定義をギルドへコピー
+        BOT.tree.copy_global_to(guild=guild)
+        # ★ そのギルドに対して同期
+        synced = await BOT.tree.sync(guild=guild)
+        print(f"Slash commands synced to guild {gid}. count={len(synced)}")
     else:
-        await BOT.tree.sync()
+        synced = await BOT.tree.sync()
+        print(f"Slash commands synced globally. count={len(synced)}")
+
+    # デバッグ: 読み込まれているコマンド名を表示
+    print("Loaded commands:", [c.name for c in BOT.tree.get_commands()])
     print(f"Logged in as {BOT.user} (ID: {BOT.user.id})")
 
 def main():
