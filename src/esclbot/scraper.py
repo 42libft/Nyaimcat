@@ -1,27 +1,14 @@
 # src/esclbot/scraper.py
 from __future__ import annotations
+import asyncio
 import re
-from typing import Optional, List
+from typing import List, Optional
+from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
 
-# 「詳細な試合結果」だけを受理するための必須ヘッダ
-REQUIRED_HEADERS = {
-    "team_name","team_num","player_name","character","placement",
-    "kills","assists","damage","shots","hits","accuracy",
-    "headshots","headshots_accuracy","survival_time"
-}
-
-def _looks_like_detailed_payload(text: str) -> bool:
-    """詳細テキストかどうかをヘッダで判定"""
-    if not text or "team_name" not in text:
-        return False
-    head = text.splitlines()[0].strip().lower()
-    cols = re.split(r"\t|\s{2,}", head)
-    cols = set(c.strip().lower() for c in cols if c.strip())
-    return REQUIRED_HEADERS.issubset(cols)
-
+# ========== 既存の静的フェッチ（フォールバック用） ==========
 def fetch_html(url: str, timeout_sec: int = 15) -> Optional[str]:
     try:
         with httpx.Client(follow_redirects=True, timeout=timeout_sec, headers={
@@ -33,79 +20,166 @@ def fetch_html(url: str, timeout_sec: int = 15) -> Optional[str]:
     except Exception:
         return None
 
+# 「詳細」テキストの必須ヘッダ（判定用）
+REQUIRED_HEADERS = {
+    "team_name","team_num","player_name","character","placement",
+    "kills","assists","damage","shots","hits","accuracy",
+    "headshots","headshots_accuracy","survival_time"
+}
+
+def _looks_like_detailed_payload(text: str) -> bool:
+    if not text:
+        return False
+    head = text.splitlines()[0].strip().lower()
+    cols = re.split(r"\t|\s{2,}", head)
+    cols = {c.strip() for c in cols if c.strip()}
+    return REQUIRED_HEADERS.issubset(cols)
+
+# ===========================================================
+# Playwright (Chromium) でレンダリングして抽出
+# ===========================================================
+async def _extract_with_playwright(url: str) -> Optional[str]:
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        ctx = await browser.new_context(user_agent="Mozilla/5.0 (ESCL Collector Bot)")
+        page = await ctx.new_page()
+
+        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+        # ボタンテキストに「詳細な試合結果をコピー」を含む要素を待つ（最大30秒）
+        btn = await page.locator("text=詳細な試合結果をコピー").first
+        try:
+            await btn.wait_for(state="visible", timeout=30000)
+        except Exception:
+            # ボタンが無い場合はページ全体から候補を探索
+            html = await page.content()
+            soup = BeautifulSoup(html, "html.parser")
+            for el in soup.find_all(attrs={"data-clipboard-text": True}):
+                txt = el.get("data-clipboard-text", "").strip()
+                if _looks_like_detailed_payload(txt):
+                    await browser.close()
+                    return txt
+            await browser.close()
+            return None
+
+        # data-clipboard-text を持つ自身 or 親を探す
+        handle = await btn.element_handle()
+        txt = None
+        if handle:
+            # 自身
+            attr = await handle.get_attribute("data-clipboard-text")
+            if attr and _looks_like_detailed_payload(attr.strip()):
+                txt = attr.strip()
+            # 親
+            if not txt:
+                parent = await handle.evaluate_handle("el => el.closest('[data-clipboard-text]')")
+                if parent:
+                    attr = await parent.get_attribute("data-clipboard-text")
+                    if attr and _looks_like_detailed_payload(attr.strip()):
+                        txt = attr.strip()
+
+        # 最後の手段：ページ内容から復元
+        if not txt:
+            html = await page.content()
+            soup = BeautifulSoup(html, "html.parser")
+            # pre/code/textarea
+            for tag in soup.find_all(["pre","code","textarea"]):
+                payload = tag.get_text("\n").strip()
+                if _looks_like_detailed_payload(payload):
+                    txt = payload
+                    break
+            # script内
+            if not txt:
+                for sc in soup.find_all("script"):
+                    raw = sc.get_text(" ").strip()
+                    if "team_name" in raw:
+                        payload = raw.replace("\\n", "\n").replace("\\t", "\t")
+                        m = re.search(r"(team_name[^\r\n]+(?:[\r\n].+)*)", payload)
+                        if m and _looks_like_detailed_payload(m.group(1).strip()):
+                            txt = m.group(1).strip()
+                            break
+
+        await browser.close()
+        return txt
+
 def extract_text_from_url(url: str, timeout_sec: int = 15) -> Optional[str]:
-    """ページから『詳細な試合結果をコピー』のペイロードだけを抽出する。"""
+    """
+    ゲームページURLから『詳細な試合結果』のテキストを取得。
+    1) Playwright でレンダリングして data-clipboard-text を読む
+    2) 失敗したら静的HTMLからフォールバック抽出
+    """
+    try:
+        return asyncio.run(_extract_with_playwright(url))
+    except Exception:
+        pass  # フォールバックへ
+
+    # フォールバック（静的HTML）
     html = fetch_html(url, timeout_sec=timeout_sec)
     if not html:
         return None
     soup = BeautifulSoup(html, "html.parser")
-
-    # 1) ボタン本文が「詳細な試合結果をコピー」の要素を最優先
-    for el in soup.find_all(["button", "a", "div", "span"], string=True):
-        label = el.get_text(strip=True)
-        if "詳細な試合結果をコピー" in label:
-            target = el if el.has_attr("data-clipboard-text") else el.find_parent(attrs={"data-clipboard-text": True})
-            if target and target.has_attr("data-clipboard-text"):
-                txt = target["data-clipboard-text"].strip()
-                if _looks_like_detailed_payload(txt):
-                    return txt
-
-    # 2) data-clipboard-text 総当り（詳細ヘッダだけ受理）
-    candidates = []
+    # data-clipboard-text 総当り
     for el in soup.find_all(attrs={"data-clipboard-text": True}):
         txt = el.get("data-clipboard-text", "").strip()
         if _looks_like_detailed_payload(txt):
-            candidates.append(txt)
-    if candidates:
-        return max(candidates, key=len)
-
-    # 3) pre/code/textarea
-    for tag in soup.find_all(["pre", "code", "textarea"]):
-        txt = tag.get_text("\n").strip()
-        if _looks_like_detailed_payload(txt):
             return txt
-
-    # 4) script 埋め込みから回収
-    for sc in soup.find_all("script"):
-        raw = sc.get_text(" ").strip()
-        if "team_name" in raw:
-            txt = raw.replace("\\n", "\n").replace("\\t", "\t")
-            txt = txt.split("];", 1)[0]
-            m = re.search(r"(team_name[^\r\n]+(?:[\r\n].+)*)", txt)
-            if m:
-                payload = m.group(1).strip()
-                if _looks_like_detailed_payload(payload):
-                    return payload
     return None
 
+# ===========================================================
+# 親URL → GAME1〜6のURLを抽出（レンダリング後のDOMから拾う）
+# ===========================================================
+async def _find_urls_with_playwright(parent_url: str, limit: int = 6) -> List[str]:
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        ctx = await browser.new_context(user_agent="Mozilla/5.0 (ESCL Collector Bot)")
+        page = await ctx.new_page()
+        await page.goto(parent_url, wait_until="domcontentloaded", timeout=30000)
+
+        # DOM全体の content を取り、正規表現で /scrims/<sid>/<gid> を抽出
+        html = await page.content()
+        await browser.close()
+
+    return _extract_game_urls_from_html(html, parent_url, limit)
+
+SCRIM_PATH_RE = re.compile(r"(/scrims/[0-9a-f\-]{8,}/[0-9a-f\-]{8,})")
+
+def _extract_game_urls_from_html(html: str, base_url: str, limit: int) -> List[str]:
+    from urllib.parse import urljoin
+    # 親URLの scrimId を優先
+    sid_hint = guess_scrim_id(base_url)
+    urls: List[str] = []
+    seen = set()
+
+    for m in SCRIM_PATH_RE.finditer(html):
+        path = m.group(1)
+        full = urljoin(base_url, path)
+        # sid一致のものだけ
+        sid = guess_scrim_id(full)
+        if sid_hint and sid != sid_hint:
+            continue
+        if full not in seen:
+            seen.add(full)
+            urls.append(full)
+        if len(urls) >= limit:
+            break
+    return urls
+
 def guess_scrim_id(url: Optional[str]) -> Optional[str]:
-    """URLから scrim_id を推定（/scrims/<scrim_id>/...）"""
     if not url:
         return None
-    m = re.search(r"/scrims/([0-9a-f\-]+)/?", url)
+    m = re.search(r"/scrims/([0-9a-f\-]{8,})", url)
     return m.group(1) if m else None
 
 def find_game_urls_from_parent(parent_url: str, limit: int = 6) -> List[str]:
-    """親ページから /scrims/<scrimId>/<gameId> のリンクを最大6件拾う"""
-    html = fetch_html(parent_url)
-    if not html:
-        return []
-    soup = BeautifulSoup(html, "html.parser")
-    found: List[str] = []
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if re.search(r"/scrims/[0-9a-f\-]+/[0-9a-f\-]+", href):
-            if href.startswith("http"):
-                url = href
-            else:
-                base = re.match(r"^(https?://[^/]+)", parent_url)
-                if base:
-                    url = base.group(1) + href
-                else:
-                    continue
-            if url not in found:
-                found.append(url)
-        if len(found) >= limit:
-            break
-    return found
-
+    try:
+        return asyncio.run(_find_urls_with_playwright(parent_url, limit))
+    except Exception:
+        # フォールバック（静的HTML）
+        html = fetch_html(parent_url)
+        if not html:
+            return []
+        return _extract_game_urls_from_html(html, parent_url, limit)
