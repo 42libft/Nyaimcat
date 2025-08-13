@@ -72,7 +72,7 @@ async def escl_add(inter: discord.Interaction, url: Optional[str] = None, text: 
     payload: Optional[str] = None
     src = "text"
     if url:
-        payload = extract_text_from_url(url)
+        payload = await extract_text_from_url(url)
         src = "url"
     elif text:
         payload = text
@@ -145,7 +145,7 @@ async def escl_finish(inter: discord.Interaction):
 async def escl_from_parent(inter: discord.Interaction, parent_url: str, scrim_group: Optional[str] = None):
     await inter.response.defer(thinking=True, ephemeral=False)
 
-    urls = find_game_urls_from_parent(parent_url, limit=6)
+    urls = await find_game_urls_from_parent(parent_url, limit=6)
     if not urls:
         await inter.followup.send("親ページからゲームURLを見つけられませんでした。URLが正しいか確認してください。")
         return
@@ -153,7 +153,7 @@ async def escl_from_parent(inter: discord.Interaction, parent_url: str, scrim_gr
     rows: List[pd.DataFrame] = []
     sid = guess_scrim_id(parent_url)
     for i, url in enumerate(urls, start=1):
-        txt = extract_text_from_url(url)
+        txt = await extract_text_from_url(url)
         if not txt:
             await inter.followup.send(f"ゲーム{i}の抽出に失敗：{url}\n（ページの『詳細な試合結果をコピー』テキストでの貼付なら確実です）")
             return
@@ -187,7 +187,7 @@ async def escl_from_urls(inter: discord.Interaction, urls: str, scrim_group: Opt
         if not re.match(r"^https?://", url):
             await inter.followup.send(f"URL形式エラー: {url}")
             return
-        txt = extract_text_from_url(url)
+        txt = await extract_text_from_url(url)
         if not txt:
             await inter.followup.send(f"ゲーム{i}の抽出に失敗：{url}\n（ページの『詳細な試合結果をコピー』テキストでの貼付なら確実です）")
             return

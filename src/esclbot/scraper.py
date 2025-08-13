@@ -40,39 +40,34 @@ def _looks_like_detailed_payload(text: str) -> bool:
 # ===========================================================
 async def _extract_with_playwright(url: str) -> Optional[str]:
     from playwright.async_api import async_playwright
-
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         ctx = await browser.new_context(user_agent="Mozilla/5.0 (ESCL Collector Bot)")
         page = await ctx.new_page()
-
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-        # ボタンテキストに「詳細な試合結果をコピー」を含む要素を待つ（最大30秒）
-        btn = await page.locator("text=詳細な試合結果をコピー").first
+        # ボタン待ち
+        btn = page.locator("text=詳細な試合結果をコピー").first
         try:
             await btn.wait_for(state="visible", timeout=30000)
         except Exception:
-            # ボタンが無い場合はページ全体から候補を探索
             html = await page.content()
+            await browser.close()
+            # フォールバック：静的抽出
             soup = BeautifulSoup(html, "html.parser")
             for el in soup.find_all(attrs={"data-clipboard-text": True}):
-                txt = el.get("data-clipboard-text", "").strip()
+                txt = (el.get("data-clipboard-text") or "").strip()
                 if _looks_like_detailed_payload(txt):
-                    await browser.close()
                     return txt
-            await browser.close()
             return None
 
-        # data-clipboard-text を持つ自身 or 親を探す
+        # data-clipboard-text 取得
         handle = await btn.element_handle()
         txt = None
         if handle:
-            # 自身
             attr = await handle.get_attribute("data-clipboard-text")
             if attr and _looks_like_detailed_payload(attr.strip()):
                 txt = attr.strip()
-            # 親
             if not txt:
                 parent = await handle.evaluate_handle("el => el.closest('[data-clipboard-text]')")
                 if parent:
@@ -80,22 +75,19 @@ async def _extract_with_playwright(url: str) -> Optional[str]:
                     if attr and _looks_like_detailed_payload(attr.strip()):
                         txt = attr.strip()
 
-        # 最後の手段：ページ内容から復元
         if not txt:
             html = await page.content()
             soup = BeautifulSoup(html, "html.parser")
-            # pre/code/textarea
             for tag in soup.find_all(["pre","code","textarea"]):
                 payload = tag.get_text("\n").strip()
                 if _looks_like_detailed_payload(payload):
                     txt = payload
                     break
-            # script内
             if not txt:
                 for sc in soup.find_all("script"):
                     raw = sc.get_text(" ").strip()
                     if "team_name" in raw:
-                        payload = raw.replace("\\n", "\n").replace("\\t", "\t")
+                        payload = raw.replace("\\n","\n").replace("\\t","\t")
                         m = re.search(r"(team_name[^\r\n]+(?:[\r\n].+)*)", payload)
                         if m and _looks_like_detailed_payload(m.group(1).strip()):
                             txt = m.group(1).strip()
@@ -103,6 +95,74 @@ async def _extract_with_playwright(url: str) -> Optional[str]:
 
         await browser.close()
         return txt
+
+async def extract_text_from_url(url: str, timeout_sec: int = 15) -> Optional[str]:
+    """非同期：まずPlaywright、だめなら静的HTML解析で詳細テキストを取る"""
+    try:
+        txt = await _extract_with_playwright(url)
+        if txt:
+            return txt
+    except Exception:
+        pass
+
+    # フォールバック：ブロッキングI/Oを別スレッドで
+    html = await asyncio.to_thread(fetch_html, url, timeout_sec)
+    if not html:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    for el in soup.find_all(attrs={"data-clipboard-text": True}):
+        txt = (el.get("data-clipboard-text") or "").strip()
+        if _looks_like_detailed_payload(txt):
+            return txt
+    return None
+
+SCRIM_PATH_RE = re.compile(r"(/scrims/[0-9a-f\-]{8,}/[0-9a-f\-]{8,})")
+
+def guess_scrim_id(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    m = re.search(r"/scrims/([0-9a-f\-]{8,})", url)
+    return m.group(1) if m else None
+
+def _extract_game_urls_from_html(html: str, base_url: str, limit: int) -> List[str]:
+    from urllib.parse import urljoin
+    sid_hint = guess_scrim_id(base_url)
+    urls, seen = [], set()
+    for m in SCRIM_PATH_RE.finditer(html or ""):
+        full = urljoin(base_url, m.group(1))
+        sid = guess_scrim_id(full)
+        if sid_hint and sid != sid_hint:
+            continue
+        if full not in seen:
+            seen.add(full)
+            urls.append(full)
+        if len(urls) >= limit:
+            break
+    return urls
+
+async def _find_urls_with_playwright(parent_url: str, limit: int = 6) -> List[str]:
+    from playwright.async_api import async_playwright
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        ctx = await browser.new_context(user_agent="Mozilla/5.0 (ESCL Collector Bot)")
+        page = await ctx.new_page()
+        await page.goto(parent_url, wait_until="domcontentloaded", timeout=30000)
+        html = await page.content()
+        await browser.close()
+    return _extract_game_urls_from_html(html, parent_url, limit)
+
+async def find_game_urls_from_parent(parent_url: str, limit: int = 6) -> List[str]:
+    """非同期：親URLから /scrims/<sid>/<gid> を最大6件抽出"""
+    try:
+        urls = await _find_urls_with_playwright(parent_url, limit)
+        if urls:
+            return urls
+    except Exception:
+        pass
+    html = await asyncio.to_thread(fetch_html, parent_url)
+    if not html:
+        return []
+    return _extract_game_urls_from_html(html, parent_url, limit)
 
 def extract_text_from_url(url: str, timeout_sec: int = 15) -> Optional[str]:
     """
