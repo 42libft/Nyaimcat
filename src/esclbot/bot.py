@@ -132,6 +132,8 @@ async def escl_finish(inter: discord.Interaction):
     await inter.response.defer(thinking=True, ephemeral=False)
     sess = _sessions.pop(key)
     df_all = pd.concat(sess.frames, ignore_index=True)
+    df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
+    
     fname = f"ESCL_{(sess.scrim_group or 'G?')}_{(sess.scrim_id or 'unknown')}.csv"
     await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
 
@@ -162,6 +164,9 @@ async def escl_from_parent(inter: discord.Interaction, parent_url: str, scrim_gr
         rows.append(df)
 
     df_all = pd.concat(rows, ignore_index=True)
+
+    df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
+
     fname = f"ESCL_{(scrim_group or 'G?')}_{(sid or 'unknown')}.csv"
     await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
 
@@ -193,6 +198,9 @@ async def escl_from_urls(inter: discord.Interaction, urls: str, scrim_group: Opt
         rows.append(df)
 
     df_all = pd.concat(rows, ignore_index=True)
+
+    df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
+
     fname = f"ESCL_{(scrim_group or 'G?')}_{(sid or 'unknown')}.csv"
     await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
 
