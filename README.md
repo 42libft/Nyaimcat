@@ -38,3 +38,38 @@ python -m src.esclbot.bot
 ## Deploy
 - Local: run the module as above
 - Docker (optional): you can add a simple Dockerfile; PRs welcome
+
+## Nyaimlab Management API (Pages Dashboard Backend)
+
+The repository now also includes a FastAPI backend that fulfils the management
+API described in the Nyaimlab dashboard requirements.  It exposes
+`POST /api/*` endpoints for Pages clients and persists state in an in-memory
+store with audit logging.
+
+### Start the API locally
+
+```bash
+pip install -r requirements.txt
+python -m src.nyaimlab  # serves on 0.0.0.0:8080 by default
+```
+
+Set `API_AUTH_TOKEN` to the bearer token that the Pages frontend will use. All
+requests must provide:
+
+- `Authorization: Bearer <token>`
+- `x-client`: dashboard identifier
+- `x-guild-id`: Discord guild identifier
+- `x-user-id`: operator (used for audit logs)
+
+### Implemented routes (summary)
+
+- `/api/welcome.post` – configure the welcome embed (buttons, templates, etc.)
+- `/api/guideline.save` / `/api/guideline.test` – manage DM guideline content
+- `/api/verify.post` / `/api/verify.remove` – manage the `/verify` automation
+- `/api/roles.*` – configure role distribution, emoji mapping and preview
+- `/api/introduce.post` / `/api/introduce.schema.save` – customise `/introduce`
+- `/api/scrims.config.save` / `/api/scrims.run` – scrim helper configuration
+- `/api/audit.search` / `/api/audit.export` – fetch audit logs (CSV/NDJSON)
+- `/api/settings.save` – shared settings for locale/timezone/member index
+
+All responses follow `{"ok": bool, "error"?, "data"?, "audit_id"?}`.
