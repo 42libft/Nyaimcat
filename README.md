@@ -73,3 +73,30 @@ requests must provide:
 - `/api/settings.save` – shared settings for locale/timezone/member index
 
 All responses follow `{"ok": bool, "error"?, "data"?, "audit_id"?}`.
+
+## Nyaimlab Management Dashboard (Vite + React)
+
+The `dashboard/` directory contains a Vite + React implementation of the Pages
+frontend described in the handover design document. It provides interactive
+editors for welcome onboarding, guideline DMs, verify/roles, introductions,
+scrim automation, audit log inspection and YAML/PR creation.
+
+### Install & run locally
+
+```bash
+cd dashboard
+npm install
+npm run dev
+```
+
+The development server runs on <http://localhost:5173> by default. Configure the
+API connection by supplying the API base URL (for example,
+`http://localhost:8080/api`), the management token and the guild/client
+identifiers on the login form.
+
+The YAML tab can generate GitHub Pull Requests directly using a personal access
+token. Dashboard preferences are stored only in the browser's `localStorage`.
+
+## Design reference
+
+- [Nyaimlab Bot 引き継ぎ設計メモ](docs/NyaimlabBotDesign.md)
