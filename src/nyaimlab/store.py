@@ -101,6 +101,38 @@ class Store:
         self._lock = Lock()
 
     # ------------------------------------------------------------------
+    # Snapshot helpers
+    # ------------------------------------------------------------------
+    def get_state(self, ctx: RequestContext) -> tuple[Dict[str, Any], AuditEntry]:
+        """Return a serialisable snapshot of the guild state."""
+
+        with self._lock:
+            state = self._ensure_state(ctx.guild_id)
+            snapshot: Dict[str, Any] = {
+                "welcome": dict(state.welcome) if state.welcome else None,
+                "guideline": dict(state.guideline) if state.guideline else None,
+                "verify": dict(state.verify) if state.verify else None,
+                "roles": dict(state.roles) if state.roles else None,
+                "role_emoji_map": dict(state.role_emoji_map),
+                "introduce": dict(state.introduce) if state.introduce else None,
+                "introduce_schema": dict(state.introduce_schema),
+                "scrims": dict(state.scrims) if state.scrims else None,
+                "settings": dict(state.settings),
+            }
+        configured_sections = sum(
+            1
+            for key in ("welcome", "guideline", "verify", "roles", "introduce", "scrims")
+            if snapshot.get(key)
+        )
+        entry = self._record_audit(
+            ctx,
+            "state.get",
+            ok=True,
+            payload={"sections": configured_sections},
+        )
+        return snapshot, entry
+
+    # ------------------------------------------------------------------
     # Helper utilities
     # ------------------------------------------------------------------
     def _ensure_state(self, guild_id: str) -> GuildState:

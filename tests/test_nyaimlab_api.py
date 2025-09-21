@@ -78,3 +78,32 @@ def test_introduce_schema_duplicate_error(client: TestClient, auth_headers: Dict
     assert body["ok"] is False
     assert "audit_id" in body
     assert "Duplicate field_id" in body["error"]
+
+
+def test_state_snapshot(client: TestClient, auth_headers: Dict[str, str]) -> None:
+    client.post(
+        "/api/welcome.post",
+        json={"channel_id": "999", "buttons": []},
+        headers=auth_headers,
+    )
+    client.post(
+        "/api/roles.post",
+        json={"channel_id": "888", "style": "buttons", "roles": []},
+        headers=auth_headers,
+    )
+
+    resp = client.post(
+        "/api/state.get",
+        json={},
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert "audit_id" in body
+    state = body["data"]["state"]
+    assert state["welcome"]["channel_id"] == "999"
+    assert state["roles"]["channel_id"] == "888"
+    assert state["role_emoji_map"] == {}
+    assert state["introduce_schema"] == {"fields": []}

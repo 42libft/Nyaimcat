@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .auth import require_context
@@ -190,8 +191,22 @@ def audit_export(
     return _success(audit_entry, data)
 
 
+@router.post("/state.get", response_model=APIResponse)
+def state_get(ctx: RequestContext = Depends(require_context)) -> Dict[str, Any]:
+    snapshot, audit_entry = STORE.get_state(ctx)
+    return _success(audit_entry, {"state": snapshot})
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Nyaimlab Management API", version="0.1.0")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(  # type: ignore[override]
