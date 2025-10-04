@@ -1,0 +1,27 @@
+URL: https://core-api-prod.escl.workers.dev/user.v1.UserService/Me
+METHOD: POST
+STATUS: 401
+REQ_HEADERS:
+sec-ch-ua-platform: "Windows"
+authorization: <masked>
+referer: https://fightnt.escl.co.jp/
+sec-ch-ua: "Chromium";v="139", "Not;A=Brand";v="99"
+sec-ch-ua-mobile: ?0
+connect-protocol-version: 1
+user-agent: Mozilla/5.0 (ESCL API Dump)
+content-type: application/json
+
+REQ_BODY:
+{}
+
+RESP_HEADERS:
+nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v4?s=hahNtSOiYBuEaO4sqn0I054c44uBF0N4p14wCTxfm%2FZnXb%2BNLfm2IluTg7VsvQIfSGaaSigJM5anyzfNPYg0AWM5FBr3tAdZo9zvKULt1x59fQlbX3BvjLTpFlt%2F9%2FtWF%2BE7SgjQkjxYMkjJZbvqKOjrPTSPbU%2F%2Fu6Booy8%3D"}],"group":"cf-nel","max_age":604800}
+cf-ray: 96e79747baa3d740-NRT
+access-control-allow-origin: https://fightnt.escl.co.jp
+alt-svc: h3=":443"; ma=86400
+server-timing: cfL4;desc="?proto=QUIC&rtt=89248&min_rtt=56534&rtt_var=20047&sent=30&recv=23&lost=0&retrans=0&sent_bytes=11860&recv_bytes=6894&delivery_rate=59927&ipace=0&icwnd=12000&ss_exit_cwnd=0&ss_exit_reason=0&cwnd=12000&unsent_bytes=0&cid=2bfd091d9e00280a&ts=3247&inflight_dur=534&x=103"
+date: Wed, 13 Aug 2025 10:39:51 GMT
+content-type: application/json
+vary: Origin, Accept-Encoding
+server: cloudflare

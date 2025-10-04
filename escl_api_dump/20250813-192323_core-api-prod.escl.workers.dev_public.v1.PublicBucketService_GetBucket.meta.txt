@@ -1,0 +1,28 @@
+URL: https://core-api-prod.escl.workers.dev/public.v1.PublicBucketService/GetBucket
+METHOD: POST
+STATUS: 200
+REQ_HEADERS:
+sec-ch-ua-platform: "Windows"
+authorization: <masked>
+referer: https://fightnt.escl.co.jp/
+sec-ch-ua: "Chromium";v="139", "Not;A=Brand";v="99"
+sec-ch-ua-mobile: ?0
+connect-protocol-version: 1
+user-agent: Mozilla/5.0 (ESCL API Dump)
+content-type: application/json
+
+REQ_BODY:
+{"key":"36db0e63-5188-4ab7-b7ce-5fe1a9fb58d4/77cc0dae-6970-444c-ab30-3905e690e57d.json"}
+
+RESP_HEADERS:
+nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+content-encoding: zstd
+report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v4?s=sZOv0aI8IvloyrKFMAZ5R%2BHUnUSNNy1hAA5WQEbn983WKwBTak188JbM1QyN1QPuFuvGDYU71KuiszctT9CRl6i%2BhsPF8h3JbU%2FkBb9fFU7w1JyRHVKc%2Bkk%2FVs4e2yxJUMg2u1VaGQPBhUSgZ1ZPnGwNC0mk8Qc545rescM%3D"}],"group":"cf-nel","max_age":604800}
+cf-ray: 96e77f29984ae36b-NRT
+access-control-allow-origin: https://fightnt.escl.co.jp
+alt-svc: h3=":443"; ma=86400
+server-timing: cfL4;desc="?proto=TCP&rtt=597721&min_rtt=400626&rtt_var=277599&sent=34&recv=29&lost=0&retrans=0&sent_bytes=10302&recv_bytes=3789&delivery_rate=21969&cwnd=253&unsent_bytes=0&cid=96efbece9e6fc1cb&ts=1024&x=0"
+date: Wed, 13 Aug 2025 10:23:23 GMT
+content-type: application/json
+vary: Origin, Accept-Encoding
+server: cloudflare

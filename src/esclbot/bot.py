@@ -1,10 +1,6 @@
-# src/esclbot/bot.py
 from __future__ import annotations
-
-import os
-import io
-import re
-from typing import Optional, List
+import os, io, asyncio
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -12,218 +8,270 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import pandas as pd
 
-from .session import Session
-from .parser import parse_pasted_text
-from .scraper import (
-    extract_text_from_url,
-    guess_scrim_id,
-    find_game_urls_from_parent,
+from .api_scraper import (
+    collect_csv_from_parent_url,
+    get_scrim_name,
+    parse_scrim_group_from_url,
 )
 
-# =========================
-# Boot & Globals
-# =========================
+__BOT_VERSION__ = "ESCL-Bot v1.5-raw+aggregates"
+
+# ===== Boot =====
 load_dotenv()
-
 INTENTS = discord.Intents.default()
-# スラッシュコマンドだけなら message_content は不要
 INTENTS.message_content = False
-
 BOT = commands.Bot(command_prefix="!", intents=INTENTS)
 
-# セッションは (guild_id, channel_id, user_id) 毎に管理
-_sessions: dict[tuple[int, int, int], Session] = {}
+GUILD_ID_STR = os.getenv("GUILD_ID")
+GUILD_OBJ = discord.Object(id=int(GUILD_ID_STR)) if (GUILD_ID_STR and GUILD_ID_STR.isdigit()) else None
 
-def _key_from_inter(inter: discord.Interaction) -> tuple[int, int, int]:
-    return (inter.guild_id or 0, inter.channel_id or 0, inter.user.id)
+def _safe_name(s: str) -> str:
+    return "".join(c for c in s if c not in r'\/:*?"<>|').strip()
 
-# =========================
-# Helper
-# =========================
 def _df_to_discord_file(df: pd.DataFrame, filename: str) -> discord.File:
     buf = io.StringIO()
     df.to_csv(buf, index=False)
     data = io.BytesIO(buf.getvalue().encode("utf-8"))
     return discord.File(data, filename=filename)
 
-# =========================
-# Classic flow: new → add → finish
-# =========================
-@BOT.tree.command(name="escl_new", description="ESCL集計: 新しいセッションを開始")
-@app_commands.describe(scrim_group="G1〜G5（任意）", scrim_url="親ページのURL（任意）")
-async def escl_new(inter: discord.Interaction, scrim_group: Optional[str] = None, scrim_url: Optional[str] = None):
-    key = _key_from_inter(inter)
-    _sessions[key] = Session(scrim_group=scrim_group or os.getenv("DEFAULT_SCRIM_GROUP") or "", scrim_id=guess_scrim_id(scrim_url))
-    await inter.response.send_message(
-        f"新しいセッションを開始しました。group=`{_sessions[key].scrim_group or '未指定'}` scrim_id=`{_sessions[key].scrim_id or '不明'}`",
-        ephemeral=False,
+# ===== 集計ヘルパー（TEAM_TOTALSを作る） =====
+def _aggregate_team_totals(df_all: pd.DataFrame) -> pd.DataFrame:
+    df = df_all.copy()
+
+    # 数値列を確実に用意・数値化
+    num_cols = ["kills","assists","damage","shots","hits","headshots","survival_time"]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+        else:
+            df[c] = 0
+
+    # team_num を安定ソート用に整形
+    if "team_num" not in df.columns:
+        df["team_num"] = None
+    else:
+        def _to_int_or_none(x):
+            try:
+                return int(x)
+            except Exception:
+                return None
+        df["team_num"] = df["team_num"].apply(_to_int_or_none)
+
+    # 集計
+    grouped = df.groupby(["team_num","team_name"], dropna=False).agg({
+        "kills":"sum",
+        "assists":"sum",
+        "damage":"sum",
+        "shots":"sum",
+        "hits":"sum",
+        "headshots":"sum",
+        "survival_time":"sum",
+    }).reset_index()
+
+    # 精度は合計から再計算（%）
+    grouped["accuracy"] = (grouped["hits"] / grouped["shots"]).where(grouped["shots"]>0, 0) * 100.0
+    grouped["headshots_accuracy"] = (grouped["headshots"] / grouped["hits"]).where(grouped["hits"]>0, 0) * 100.0
+
+    # 小数整形
+    grouped["accuracy"] = grouped["accuracy"].round(2)
+    grouped["headshots_accuracy"] = grouped["headshots_accuracy"].round(2)
+
+    # 並び：team_num → team_name
+    grouped["_team_num_sort"] = grouped["team_num"].apply(
+        lambda x: x if isinstance(x, int) else 10**9
     )
+    grouped = grouped.sort_values(
+        by=["_team_num_sort", "team_name"],
+        na_position="last"
+    ).drop(columns="_team_num_sort").reset_index(drop=True)
 
-@BOT.tree.command(name="escl_add", description="1試合分を追加（URL/テキスト/ファイルのどれか）")
-@app_commands.describe(url="ゲームページのURL", text="ESCLの『詳細な試合結果をコピー』で得たテキスト", file="txt/tsvファイル（任意）")
-async def escl_add(inter: discord.Interaction, url: Optional[str] = None, text: Optional[str] = None, file: Optional[discord.Attachment] = None):
-    key = _key_from_inter(inter)
-    if key not in _sessions:
-        await inter.response.send_message("まず /escl_new でセッションを開始してください。", ephemeral=True)
-        return
+    # 列順
+    out_cols = [
+        "team_name","team_num",
+        "kills","assists","damage","shots","hits","accuracy",
+        "headshots","headshots_accuracy","survival_time"
+    ]
+    for c in out_cols:
+        if c not in grouped.columns:
+            grouped[c] = None
+    return grouped[out_cols]
 
-    await inter.response.defer(thinking=True, ephemeral=False)
 
-    payload: Optional[str] = None
-    src = "text"
-    if url:
-        payload = await extract_text_from_url(url)
-        src = "url"
-    elif text:
-        payload = text
-        src = "text"
-    elif file:
-        if file.size > 4 * 1024 * 1024:
-            await inter.followup.send("ファイルが大きすぎます（4MBまで）。")
-            return
-        content = await file.read()
-        payload = content.decode("utf-8", errors="ignore")
-        src = "file"
+def _aggregate_player_totals(df_all: pd.DataFrame) -> pd.DataFrame:
+    df = df_all.copy()
 
-    if not payload:
-        await inter.followup.send("入力が見つかりませんでした。`url` / `text` / `file` のいずれかを指定してください。")
-        return
+    num_cols = ["kills","assists","damage","shots","hits","headshots","survival_time"]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+        else:
+            df[c] = 0
 
-    try:
-        df = parse_pasted_text(payload)
-    except Exception as e:
-        await inter.followup.send(f"テキスト解析に失敗しました: {e}")
-        return
+    if "placement" in df.columns:
+        df["placement"] = pd.to_numeric(df["placement"], errors="coerce")
+    else:
+        df["placement"] = None
 
-    sess = _sessions[key]
-    game_no = len(sess.frames) + 1
-    df.insert(0, "game_no", game_no)
-    df.insert(0, "scrim_id", sess.scrim_id or (guess_scrim_id(url) if url else ""))
-    df.insert(0, "scrim_group", sess.scrim_group)
+    for key in ("player_name", "team_name", "team_num"):
+        if key not in df.columns:
+            df[key] = None
 
-    sess.frames.append(df)
-    await inter.followup.send(f"ゲーム{game_no}を取り込みました（入力: {src}）。現在 {len(sess.frames)}/6")
+    df["_games_played"] = 1
 
-@BOT.tree.command(name="escl_list", description="セッションの取り込み状況を表示")
-async def escl_list(inter: discord.Interaction):
-    key = _key_from_inter(inter)
-    if key not in _sessions:
-        await inter.response.send_message("アクティブなセッションはありません。/escl_new から開始してください。", ephemeral=True)
-        return
-    sess = _sessions[key]
-    await inter.response.send_message(
-        f"取り込み済み: {len(sess.frames)} 件 / 6  （group={sess.scrim_group or '未指定'}, scrim_id={sess.scrim_id or '不明'}）",
-        ephemeral=False,
-    )
+    agg_map = {
+        "_games_played": "sum",
+        "kills": "sum",
+        "assists": "sum",
+        "damage": "sum",
+        "shots": "sum",
+        "hits": "sum",
+        "headshots": "sum",
+        "survival_time": "sum",
+        "placement": "mean",
+    }
 
-@BOT.tree.command(name="escl_clear", description="セッションを破棄してやり直し")
-async def escl_clear(inter: discord.Interaction):
-    key = _key_from_inter(inter)
-    _sessions.pop(key, None)
-    await inter.response.send_message("セッションをクリアしました。/escl_new から再開してください。", ephemeral=False)
+    grouped = df.groupby(["player_name","team_name","team_num"], dropna=False).agg(agg_map).reset_index()
+    grouped = grouped.rename(columns={"_games_played": "games_played"})
 
-@BOT.tree.command(name="escl_finish", description="6試合（未満でも可）をまとめてCSVで出力")
-async def escl_finish(inter: discord.Interaction):
-    key = _key_from_inter(inter)
-    if key not in _sessions or not _sessions[key].frames:
-        await inter.response.send_message("取り込み済みデータがありません。/escl_add でデータを追加してください。", ephemeral=True)
-        return
+    if "character" in df.columns:
+        def _unique_join(series: pd.Series) -> Optional[str]:
+            values = [str(x) for x in series if pd.notna(x) and str(x).strip()]
+            if not values:
+                return None
+            seen = []
+            for v in values:
+                if v not in seen:
+                    seen.append(v)
+            return ", ".join(seen)
 
-    await inter.response.defer(thinking=True, ephemeral=False)
-    sess = _sessions.pop(key)
-    df_all = pd.concat(sess.frames, ignore_index=True)
-    df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
-    
-    fname = f"ESCL_{(sess.scrim_group or 'G?')}_{(sess.scrim_id or 'unknown')}.csv"
-    await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
+        chars = (
+            df.groupby(["player_name","team_name","team_num"], dropna=False)["character"]
+            .agg(_unique_join)
+            .reset_index()
+        )
+        grouped = grouped.merge(chars, on=["player_name","team_name","team_num"], how="left")
+        grouped = grouped.rename(columns={"character": "characters"})
+    else:
+        grouped["characters"] = None
 
-# =========================
-# URLだけで完結するコマンド（新規）
-# =========================
-@BOT.tree.command(name="escl_from_parent", description="親ページURLから自動でG1〜G6を収集してCSVを返す（貼付不要）")
-@app_commands.describe(parent_url="その日のスクリム親ページURL", scrim_group="G1〜G5（任意）")
-async def escl_from_parent(inter: discord.Interaction, parent_url: str, scrim_group: Optional[str] = None):
-        await inter.response.defer(thinking=True, ephemeral=False)
+    grouped["games_played"] = grouped["games_played"].fillna(0).astype(int)
 
-    from .scraper import collect_game_texts_from_group
-    pairs = collect_game_texts_from_group(parent_url, max_games=6)
+    for c in num_cols:
+        grouped[c] = grouped[c].fillna(0).round(0).astype(int)
 
-    if not pairs:
-        await inter.followup.send("親ページから GAME 1〜6 の詳細テキストを取得できませんでした。URLをご確認ください。")
-        return
+    grouped["accuracy"] = (grouped["hits"] / grouped["shots"]).where(grouped["shots"]>0, 0) * 100.0
+    grouped["headshots_accuracy"] = (grouped["headshots"] / grouped["hits"]).where(grouped["hits"]>0, 0) * 100.0
+    grouped["accuracy"] = grouped["accuracy"].round(2)
+    grouped["headshots_accuracy"] = grouped["headshots_accuracy"].round(2)
 
-    rows = []
-    sid = guess_scrim_id(parent_url)
-    for game_no, txt in pairs:
+    grouped = grouped.rename(columns={"placement": "placement_avg"})
+    grouped["placement_avg"] = grouped["placement_avg"].round(2)
+
+    def _to_int_or_none(x):
         try:
-            df = parse_pasted_text(txt)
-        except Exception as e:
-            await inter.followup.send(f"GAME {game_no} の解析に失敗しました: {e}")
-            return
-        df.insert(0, "game_no", game_no)
-        df.insert(0, "scrim_id", sid or "")
-        df.insert(0, "scrim_group", scrim_group or "")
-        rows.append(df)
+            return int(x)
+        except Exception:
+            return None
 
-    df_all = pd.concat(rows, ignore_index=True)
-    df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
-    fname = f"ESCL_{(scrim_group or 'G?')}_{(sid or 'unknown')}.csv"
-    await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
+    grouped["team_num"] = grouped["team_num"].apply(_to_int_or_none)
+    grouped["_team_num_sort"] = grouped["team_num"].apply(
+        lambda x: x if isinstance(x, int) else 10**9
+    )
+    grouped = grouped.sort_values(
+        by=["_team_num_sort", "team_name", "player_name"],
+        na_position="last"
+    ).drop(columns="_team_num_sort").reset_index(drop=True)
 
-@BOT.tree.command(name="escl_from_urls", description="ゲームURLを1〜6個まとめて渡してCSVを返す（改行/空白区切り）")
-@app_commands.describe(urls="ゲームURLを空白または改行で区切って1〜6個（G1〜G6）", scrim_group="G1〜G5（任意）")
-async def escl_from_urls(inter: discord.Interaction, urls: str, scrim_group: Optional[str] = None):
+    out_cols = [
+        "team_name","team_num","player_name","characters","games_played",
+        "kills","assists","damage","shots","hits","accuracy",
+        "headshots","headshots_accuracy","survival_time","placement_avg"
+    ]
+
+    for c in out_cols:
+        if c not in grouped.columns:
+            grouped[c] = None
+
+    return grouped[out_cols]
+
+# ===== Commands =====
+@BOT.tree.command(name="escl_version", description="Botのバージョン表示（動いているコード確認用）")
+async def escl_version(inter: discord.Interaction):
+    await inter.response.send_message(f"{__BOT_VERSION__}", ephemeral=True)
+
+@BOT.tree.command(name="escl_from_parent_csv", description="グループURL1本からAPI直叩きで6試合CSV（生データALL_GAMES相当）")
+@app_commands.describe(parent_url="グループページURL（/scrims/<scrim>/<group>）", group="例: G5, G8 など（任意）")
+async def escl_from_parent_csv(inter: discord.Interaction, parent_url: str, group: Optional[str] = None):
     await inter.response.defer(thinking=True, ephemeral=False)
-
-    candidates = [u.strip() for u in re.split(r"[\s,]+", urls) if u.strip()]
-    candidates = candidates[:6]
-    if not candidates:
-        await inter.followup.send("URLが見つかりませんでした。")
+    try:
+        df_all = await asyncio.to_thread(collect_csv_from_parent_url, parent_url, (group or ""), 6)
+    except Exception as e:
+        await inter.followup.send(f"取得に失敗しました: {e}")
         return
 
-    rows: List[pd.DataFrame] = []
-    sid = guess_scrim_id(candidates[0])
-    for i, url in enumerate(candidates, start=1):
-        if not re.match(r"^https?://", url):
-            await inter.followup.send(f"URL形式エラー: {url}")
-            return
-        txt = await extract_text_from_url(url)
-        if not txt:
-            await inter.followup.send(f"ゲーム{i}の抽出に失敗：{url}\n（ページの『詳細な試合結果をコピー』テキストでの貼付なら確実です）")
-            return
-        df = parse_pasted_text(txt)
-        df.insert(0, "game_no", i)
-        df.insert(0, "scrim_id", sid or "")
-        df.insert(0, "scrim_group", scrim_group or "")
-        rows.append(df)
+    scrim_uuid, group_uuid = parse_scrim_group_from_url(parent_url)
+    scrim_name = get_scrim_name(scrim_uuid, group_uuid) or "ESCL_Scrim"
+    title = f"{_safe_name(scrim_name)}_{_safe_name(group or '')}".rstrip("_")
+    fname = f"{title}.csv"
 
-    df_all = pd.concat(rows, ignore_index=True)
+    await inter.followup.send(
+        content="API直叩きでCSVを生成しました。（生データALL_GAMES相当）",
+        file=_df_to_discord_file(df_all, fname),
+    )
 
-    df_all = df_all.rename(columns={"scrim_group": "group", "game_no": "game"})
+@BOT.tree.command(name="escl_from_parent_xlsx", description="API直叩きでExcel（GAME1..6=生データ、ALL_GAMES=生データ、TEAM_TOTALS=チーム合計）")
+@app_commands.describe(parent_url="グループページURL（/scrims/<scrim>/<group>）", group="例: G5, G8 など（任意）")
+async def escl_from_parent_xlsx(inter: discord.Interaction, parent_url: str, group: Optional[str] = None):
+    await inter.response.defer(thinking=True, ephemeral=False)
+    try:
+        df_all = await asyncio.to_thread(collect_csv_from_parent_url, parent_url, (group or ""), 6)
+    except Exception as e:
+        await inter.followup.send(f"取得に失敗しました: {e}")
+        return
 
-    fname = f"ESCL_{(scrim_group or 'G?')}_{(sid or 'unknown')}.csv"
-    await inter.followup.send(content="CSVを生成しました。", file=_df_to_discord_file(df_all, fname))
+    # 集計テーブル
+    team_totals = _aggregate_team_totals(df_all)
 
-# =========================
-# Sync & Run
-# =========================
+    mem = io.BytesIO()
+    with pd.ExcelWriter(mem, engine="xlsxwriter") as writer:
+        # 各試合シート（RAW）
+        for g in sorted(set(df_all["game"].dropna().astype(int))):
+            dfg = df_all[df_all["game"] == g]
+            dfg.to_excel(writer, sheet_name=f"GAME{g}", index=False)
+
+        # プレイヤー合計（6試合分）
+        player_totals = _aggregate_player_totals(df_all)
+        player_totals.to_excel(writer, sheet_name="ALL_GAMES", index=False)
+
+        # 新要件：チーム合計
+        team_totals.to_excel(writer, sheet_name="TEAM_TOTALS", index=False)
+
+    mem.seek(0)
+
+    scrim_uuid, group_uuid = parse_scrim_group_from_url(parent_url)
+    scrim_name = get_scrim_name(scrim_uuid, group_uuid) or "ESCL_Scrim"
+    title = f"{_safe_name(scrim_name)}_{_safe_name(group or '')}".rstrip("_")
+    fname = f"{title}.xlsx"
+
+    await inter.followup.send(
+        content=f"Excelを生成しました。（{__BOT_VERSION__} / ALL_GAMES=生データ / TEAM_TOTALS=チーム合計）",
+        file=discord.File(fp=mem, filename=fname),
+    )
+
+# ===== Sync & Run =====
 @BOT.event
 async def on_ready():
-    gid = os.getenv("GUILD_ID")
-    if gid and gid.isdigit():
-        guild = discord.Object(id=int(gid))
-        # ★ 追加: グローバル定義をギルドへコピー
-        BOT.tree.copy_global_to(guild=guild)
-        # ★ そのギルドに対して同期
-        synced = await BOT.tree.sync(guild=guild)
-        print(f"Slash commands synced to guild {gid}. count={len(synced)}")
+    print(f"Booting {__BOT_VERSION__} ...")
+    if GUILD_OBJ is not None:
+        BOT.tree.copy_global_to(guild=GUILD_OBJ)
+        cmds = await BOT.tree.sync(guild=GUILD_OBJ)
+        print(f"Guild sync -> {GUILD_OBJ.id}, count={len(cmds)}")
+        BOT.tree.clear_commands(guild=None)
+        await BOT.tree.sync(guild=None)
+        print("Global commands cleared.")
     else:
-        synced = await BOT.tree.sync()
-        print(f"Slash commands synced globally. count={len(synced)}")
-
-    # デバッグ: 読み込まれているコマンド名を表示
-    print("Loaded commands:", [c.name for c in BOT.tree.get_commands()])
-    print(f"Logged in as {BOT.user} (ID: {BOT.user.id})")
+        cmds = await BOT.tree.sync()
+        print(f"Global sync (no GUILD_ID). count={len(cmds)}")
 
 def main():
     token = os.getenv("DISCORD_TOKEN")

@@ -1,0 +1,26 @@
+URL: https://fightnt.escl.co.jp/api/auth/session
+METHOD: GET
+STATUS: 200
+REQ_HEADERS:
+sec-ch-ua-platform: "Windows"
+referer: https://fightnt.escl.co.jp/scrims/36db0e63-5188-4ab7-b7ce-5fe1a9fb58d4/77cc0dae-6970-444c-ab30-3905e690e57d
+user-agent: Mozilla/5.0 (ESCL API Dump)
+sec-ch-ua: "Chromium";v="139", "Not;A=Brand";v="99"
+content-type: application/json
+sec-ch-ua-mobile: ?0
+
+
+RESP_HEADERS:
+nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+cache-control: private, no-cache, no-store
+content-encoding: br
+cf-cache-status: DYNAMIC
+pragma: no-cache
+report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v4?s=sg2%2BOIAQ5BcPSeap5SjiSYrMtMKdRG1%2FwF3eBjpKftO66hA79SvZ34p2z%2FW6R5eifE7IjQDR1m5ZOBg0%2BorFmeXFnynt5t76Tg9CuUN2FXCKLi%2ByXyxz%2FdWsyf0LhR02l9zX8LZHyBygWnKL4li6ylE%3D"}],"group":"cf-nel","max_age":604800}
+cf-ray: 96e77f1a7fbcda78-NRT
+expires: 0
+x-matched-path: /api/auth/[...nextauth]
+date: Wed, 13 Aug 2025 10:23:20 GMT
+content-type: application/json
+vary: Accept-Encoding
+server: cloudflare

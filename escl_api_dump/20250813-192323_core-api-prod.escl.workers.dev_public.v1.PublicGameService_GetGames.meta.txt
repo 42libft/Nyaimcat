@@ -1,0 +1,28 @@
+URL: https://core-api-prod.escl.workers.dev/public.v1.PublicGameService/GetGames
+METHOD: POST
+STATUS: 200
+REQ_HEADERS:
+sec-ch-ua-platform: "Windows"
+authorization: <masked>
+referer: https://fightnt.escl.co.jp/
+sec-ch-ua: "Chromium";v="139", "Not;A=Brand";v="99"
+sec-ch-ua-mobile: ?0
+connect-protocol-version: 1
+user-agent: Mozilla/5.0 (ESCL API Dump)
+content-type: application/json
+
+REQ_BODY:
+{"groupId":749}
+
+RESP_HEADERS:
+nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+content-encoding: zstd
+report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v4?s=sTbiru%2BbkVOK89Rh66AmzFK%2B87fKoG1u8tAud18HDtlUgsgxL%2B%2FsmUgI7G5SAHACA%2BdkBX9k1hSscVUZ9EBtutPrgAm1It%2Bx%2BbmN7r6QrelgxDBrWM9%2FfRjYzBL5S4QKXov31n2x7fKo7XTmHScudwtrz1yCcs%2BizO%2Bx3gw%3D"}],"group":"cf-nel","max_age":604800}
+cf-ray: 96e77f2cfc39e076-NRT
+access-control-allow-origin: https://fightnt.escl.co.jp
+alt-svc: h3=":443"; ma=86400
+server-timing: cfL4;desc="?proto=QUIC&rtt=478351&min_rtt=478145&rtt_var=101064&sent=27&recv=13&lost=0&retrans=0&sent_bytes=10176&recv_bytes=6951&delivery_rate=8928&ipace=0&icwnd=12000&ss_exit_cwnd=0&ss_exit_reason=0&cwnd=12000&unsent_bytes=0&cid=f28dc896c10f5331&ts=686&inflight_dur=683&x=103"
+date: Wed, 13 Aug 2025 10:23:23 GMT
+content-type: application/json
+vary: Origin, Accept-Encoding
+server: cloudflare
