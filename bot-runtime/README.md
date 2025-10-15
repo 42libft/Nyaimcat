@@ -25,3 +25,7 @@ cp .env.example .env
 
 ## 監査ログ
 `config.yaml`の`channels.auditLog`に指定したチャンネルへ、JSON形式で監査ログを送信します。Slash Command実行結果、メンバー参加、リアクション追加、設定更新イベントが記録されます。
+
+## フィードバック保存
+Slash Command `/feedback` を使用すると、不具合報告とアイデアが `feedback/bugs` と `feedback/ideas` 配下に Markdown 形式で保存されます。
+保存されたファイルには送信者・チャンネル・送信日時などのメタ情報が含まれます。

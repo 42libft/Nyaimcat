@@ -2,6 +2,7 @@ import type {
   ChatInputCommandInteraction,
   Client,
   SlashCommandBuilder,
+  SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 
 import type { BotConfig } from "../../config";
@@ -20,7 +21,7 @@ export type CommandExecuteContext = {
 };
 
 export type SlashCommandModule = {
-  data: SlashCommandBuilder;
+  data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
   execute: (
     interaction: ChatInputCommandInteraction,
     context: CommandExecuteContext
