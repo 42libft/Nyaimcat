@@ -1,0 +1,39 @@
+guild:
+  id: "123456789012345678"
+  name: "Nyaimlab"
+  ownerId: "987654321098765432"
+
+channels:
+  auditLog: "234567890123456789"
+  welcome: "345678901234567890"
+  introduce: "456789012345678901"
+  verify: "567890123456789012"
+  guideline: "678901234567890123"
+
+roles:
+  staffRoleIds:
+    - "789012345678901234"
+  autoAssign:
+    - id: "890123456789012345"
+      label: "Member"
+      description: "自動付与される標準メンバー"
+      assignOnJoin: true
+    - id: "901234567890123456"
+      label: "Guest"
+  reactions:
+    - id: "112233445566778899"
+      label: "Valor"
+      emoji: "🟥"
+    - id: "998877665544332211"
+      label: "Mystic"
+      emoji: "🟦"
+
+features:
+  welcomeMessage: true
+  autoRoles: true
+  guidelineSync: false
+  scrimHelper: false
+
+embeds:
+  welcomeTemplate: "./embeds/welcome.mdx"
+  guidelineTemplate: "./embeds/guideline.mdx"

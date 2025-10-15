@@ -1,0 +1,52 @@
+import { z } from "zod";
+export declare const RoleConfigSchema: z.ZodObject<{
+    id: z.ZodString;
+    label: z.ZodString;
+    emoji: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
+    assignOnJoin: z.ZodDefault<z.ZodBoolean>;
+}, z.core.$strip>;
+export declare const ConfigSchema: z.ZodObject<{
+    guild: z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodOptional<z.ZodString>;
+        ownerId: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>;
+    channels: z.ZodObject<{
+        auditLog: z.ZodString;
+        welcome: z.ZodOptional<z.ZodString>;
+        introduce: z.ZodOptional<z.ZodString>;
+        verify: z.ZodOptional<z.ZodString>;
+        guideline: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>;
+    roles: z.ZodDefault<z.ZodObject<{
+        staffRoleIds: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        autoAssign: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+            emoji: z.ZodOptional<z.ZodString>;
+            description: z.ZodOptional<z.ZodString>;
+            assignOnJoin: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>>;
+        reactions: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+            emoji: z.ZodOptional<z.ZodString>;
+            description: z.ZodOptional<z.ZodString>;
+            assignOnJoin: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>>;
+    }, z.core.$strip>>;
+    features: z.ZodDefault<z.ZodObject<{
+        welcomeMessage: z.ZodDefault<z.ZodBoolean>;
+        autoRoles: z.ZodDefault<z.ZodBoolean>;
+        guidelineSync: z.ZodDefault<z.ZodBoolean>;
+        scrimHelper: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+    embeds: z.ZodDefault<z.ZodObject<{
+        welcomeTemplate: z.ZodOptional<z.ZodString>;
+        guidelineTemplate: z.ZodOptional<z.ZodString>;
+        verifyTemplate: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export type BotConfig = z.infer<typeof ConfigSchema>;
+//# sourceMappingURL=schema.d.ts.map

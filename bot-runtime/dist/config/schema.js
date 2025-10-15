@@ -1,0 +1,60 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConfigSchema = exports.RoleConfigSchema = void 0;
+const zod_1 = require("zod");
+const SnowflakeSchema = zod_1.z
+    .string()
+    .min(1, "Discord ID は空にできません");
+exports.RoleConfigSchema = zod_1.z.object({
+    id: SnowflakeSchema,
+    label: zod_1.z.string().min(1, "ロール名は必須です"),
+    emoji: zod_1.z.string().optional(),
+    description: zod_1.z.string().optional(),
+    assignOnJoin: zod_1.z.boolean().default(false),
+});
+exports.ConfigSchema = zod_1.z.object({
+    guild: zod_1.z.object({
+        id: SnowflakeSchema,
+        name: zod_1.z.string().optional(),
+        ownerId: SnowflakeSchema.optional(),
+    }),
+    channels: zod_1.z.object({
+        auditLog: SnowflakeSchema,
+        welcome: SnowflakeSchema.optional(),
+        introduce: SnowflakeSchema.optional(),
+        verify: SnowflakeSchema.optional(),
+        guideline: SnowflakeSchema.optional(),
+    }),
+    roles: zod_1.z
+        .object({
+        staffRoleIds: zod_1.z.array(SnowflakeSchema).default([]),
+        autoAssign: zod_1.z.array(exports.RoleConfigSchema).default([]),
+        reactions: zod_1.z.array(exports.RoleConfigSchema).default([]),
+    })
+        .default({
+        staffRoleIds: [],
+        autoAssign: [],
+        reactions: [],
+    }),
+    features: zod_1.z
+        .object({
+        welcomeMessage: zod_1.z.boolean().default(false),
+        autoRoles: zod_1.z.boolean().default(false),
+        guidelineSync: zod_1.z.boolean().default(false),
+        scrimHelper: zod_1.z.boolean().default(false),
+    })
+        .default({
+        welcomeMessage: false,
+        autoRoles: false,
+        guidelineSync: false,
+        scrimHelper: false,
+    }),
+    embeds: zod_1.z
+        .object({
+        welcomeTemplate: zod_1.z.string().optional(),
+        guidelineTemplate: zod_1.z.string().optional(),
+        verifyTemplate: zod_1.z.string().optional(),
+    })
+        .default({}),
+});
+//# sourceMappingURL=schema.js.map

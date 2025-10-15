@@ -1,0 +1,273 @@
+import {
+  Client,
+  Collection,
+  GatewayIntentBits,
+  Partials,
+  REST,
+  Routes,
+  type ChatInputCommandInteraction,
+  type GuildMember,
+  type MessageReaction,
+  type PartialMessageReaction,
+  type PartialUser,
+  type User,
+} from "discord.js";
+
+import type { BotConfig } from "../config";
+import { logger } from "../utils/logger";
+import {
+  buildCommandCollection,
+  commandModules,
+} from "./commands/index";
+import type { SlashCommandModule } from "./commands/types";
+import { AuditLogger } from "./auditLogger";
+
+export type DiscordClientOptions = {
+  token: string;
+  clientId: string;
+  guildId?: string;
+  config: BotConfig;
+};
+
+const buildIntentList = () => [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildMessageReactions,
+];
+
+const PARTIALS = [Partials.Message, Partials.Channel, Partials.Reaction];
+
+export class DiscordRuntime {
+  private readonly token: string;
+  private readonly clientId: string;
+  private readonly guildId: string | undefined;
+  private readonly rest: REST;
+  private client: Client;
+  private commands: Collection<string, SlashCommandModule>;
+  private config: BotConfig;
+  private auditLogger: AuditLogger;
+
+  constructor(options: DiscordClientOptions) {
+    this.token = options.token;
+    this.clientId = options.clientId;
+    this.guildId = options.guildId;
+    this.config = options.config;
+
+    this.client = new Client({
+      intents: buildIntentList(),
+      partials: PARTIALS,
+    });
+
+    this.rest = new REST({ version: "10" }).setToken(this.token);
+    this.commands = buildCommandCollection();
+    this.auditLogger = new AuditLogger(this.client, this.config);
+  }
+
+  async start() {
+    await this.registerSlashCommands();
+    this.registerEventHandlers();
+
+    await this.client.login(this.token);
+    await this.auditLogger.log({
+      action: "bot.startup",
+      status: "success",
+      description: "Botプロセスが正常に起動しました",
+      details: {
+        clientId: this.clientId,
+        guildId: this.guildId ?? null,
+      },
+    });
+  }
+
+  applyConfigUpdate(
+    config: BotConfig,
+    context?: { changedSections?: string[]; hash?: string }
+  ) {
+    this.config = config;
+    this.auditLogger.updateConfig(config);
+
+    logger.debug("DiscordRuntime 設定を更新しました", {
+      changedSections: context?.changedSections ?? [],
+      hash: context?.hash,
+    });
+
+    void this.auditLogger.log({
+      action: "config.update",
+      status: "info",
+      details: {
+        changedSections: context?.changedSections ?? [],
+        hash: context?.hash ?? null,
+      },
+    });
+  }
+
+  getClient() {
+    return this.client;
+  }
+
+  private registerEventHandlers() {
+    this.client.on("ready", () => {
+      if (!this.client.user) {
+        return;
+      }
+
+      logger.info("Discord クライアントが起動しました", {
+        user: this.client.user.tag,
+        id: this.client.user.id,
+      });
+
+      void this.auditLogger.log({
+        action: "client.ready",
+        status: "success",
+        details: {
+          userTag: this.client.user.tag,
+          userId: this.client.user.id,
+        },
+      });
+    });
+
+    this.client.on("guildMemberAdd", (member: GuildMember) => {
+      logger.info("新規メンバーを検知しました", {
+        memberId: member.id,
+        guildId: member.guild.id,
+      });
+
+      void this.auditLogger.log({
+        action: "member.join",
+        status: "info",
+        details: {
+          memberId: member.id,
+          guildId: member.guild.id,
+        },
+      });
+    });
+
+    this.client.on(
+      "messageReactionAdd",
+      async (
+        reaction: MessageReaction | PartialMessageReaction,
+        user: User | PartialUser
+      ) => {
+        try {
+          const fullReaction = reaction.partial
+            ? await reaction.fetch()
+            : reaction;
+          const fullUser = user.partial ? await user.fetch() : user;
+
+          logger.debug("リアクション追加イベント", {
+            emoji: fullReaction.emoji.toString(),
+            messageId: fullReaction.message.id,
+            userId: fullUser.id,
+          });
+
+          void this.auditLogger.log({
+            action: "reaction.add",
+            status: "info",
+            details: {
+              emoji: fullReaction.emoji.toString(),
+              messageId: fullReaction.message.id,
+              userId: fullUser.id,
+            },
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn("リアクション情報の取得に失敗しました", { message });
+        }
+      }
+    );
+
+    this.client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand()) {
+        return;
+      }
+
+      await this.handleChatCommand(interaction);
+    });
+  }
+
+  private async registerSlashCommands() {
+    const commandsPayload = commandModules.map((command) => command.data.toJSON());
+
+    try {
+      if (this.guildId) {
+        await this.rest.put(
+          Routes.applicationGuildCommands(this.clientId, this.guildId),
+          { body: commandsPayload }
+        );
+        logger.info("ギルド向けSlash Commandを同期しました", {
+          commandCount: commandsPayload.length,
+          guildId: this.guildId,
+        });
+      } else {
+        await this.rest.put(Routes.applicationCommands(this.clientId), {
+          body: commandsPayload,
+        });
+        logger.info("グローバルSlash Commandを同期しました", {
+          commandCount: commandsPayload.length,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("Slash Command登録に失敗しました", { message });
+      throw error;
+    }
+  }
+
+  private async handleChatCommand(interaction: ChatInputCommandInteraction) {
+    const command = this.commands.get(interaction.commandName);
+
+    if (!command) {
+      logger.warn("未登録のSlash Commandが呼び出されました", {
+        name: interaction.commandName,
+      });
+      await interaction.reply({
+        content: "このコマンドは現在利用できません。",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    try {
+      await command.execute(interaction, { config: this.config });
+      await this.auditLogger.log({
+        action: "command.execute",
+        status: "success",
+        details: {
+          command: command.data.name,
+          userId: interaction.user.id,
+          guildId: interaction.guildId,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("Slash Command実行中にエラーが発生しました", {
+        name: command.data.name,
+        message,
+      });
+
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          content: "コマンド実行中にエラーが発生しました。",
+          ephemeral: true,
+        });
+      } else {
+        await interaction.reply({
+          content: "コマンド実行中にエラーが発生しました。",
+          ephemeral: true,
+        });
+      }
+
+      await this.auditLogger.log({
+        action: "command.execute",
+        status: "failure",
+        description: message,
+        details: {
+          command: command.data.name,
+          userId: interaction.user.id,
+          guildId: interaction.guildId,
+        },
+      });
+    }
+  }
+}
