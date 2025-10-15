@@ -8,6 +8,7 @@ import { verifyCommand } from "./verify";
 import { versionCommand } from "./version";
 import { esclFromParentCsvCommand } from "./esclCsv";
 import { esclFromParentXlsxCommand } from "./esclXlsx";
+import { feedbackCommand } from "./feedback";
 
 export const commandModules: SlashCommandModule[] = [
   versionCommand,
@@ -17,6 +18,7 @@ export const commandModules: SlashCommandModule[] = [
   verifyCommand,
   rolesCommand,
   introduceCommand,
+  feedbackCommand,
 ];
 
 export const buildCommandCollection = () => {
