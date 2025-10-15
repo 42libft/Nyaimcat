@@ -24,6 +24,7 @@ export const ConfigSchema = z.object({
     introduce: SnowflakeSchema.optional(),
     verify: SnowflakeSchema.optional(),
     guideline: SnowflakeSchema.optional(),
+    rolesPanel: SnowflakeSchema.optional(),
   }),
   roles: z
     .object({
@@ -42,12 +43,35 @@ export const ConfigSchema = z.object({
       autoRoles: z.boolean().default(false),
       guidelineSync: z.boolean().default(false),
       scrimHelper: z.boolean().default(false),
+      countBotsInMemberCount: z.boolean().default(false),
     })
     .default({
       welcomeMessage: false,
       autoRoles: false,
       guidelineSync: false,
       scrimHelper: false,
+      countBotsInMemberCount: false,
+    }),
+  onboarding: z
+    .object({
+      guideUrl: z.string().url().optional(),
+      guideLabel: z.string().min(1).default("サーバーガイドを見る"),
+      rolesButtonLabel: z.string().min(1).default("ロールを選ぶ"),
+      rolesChannelId: SnowflakeSchema.optional(),
+      dm: z
+        .object({
+          enabled: z.boolean().default(true),
+          template: z.string().optional(),
+          fallbackMessage: z.string().optional(),
+        })
+        .default({ enabled: true }),
+      timezone: z.string().default("Asia/Tokyo"),
+    })
+    .default({
+      guideLabel: "サーバーガイドを見る",
+      rolesButtonLabel: "ロールを選ぶ",
+      dm: { enabled: true },
+      timezone: "Asia/Tokyo",
     }),
   embeds: z
     .object({

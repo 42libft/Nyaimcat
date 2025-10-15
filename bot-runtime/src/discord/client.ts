@@ -21,6 +21,7 @@ import {
 } from "./commands/index";
 import type { SlashCommandModule } from "./commands/types";
 import { AuditLogger } from "./auditLogger";
+import { OnboardingManager } from "./onboarding/manager";
 
 export type DiscordClientOptions = {
   token: string;
@@ -47,6 +48,7 @@ export class DiscordRuntime {
   private commands: Collection<string, SlashCommandModule>;
   private config: BotConfig;
   private auditLogger: AuditLogger;
+  private onboarding: OnboardingManager;
 
   constructor(options: DiscordClientOptions) {
     this.token = options.token;
@@ -62,6 +64,7 @@ export class DiscordRuntime {
     this.rest = new REST({ version: "10" }).setToken(this.token);
     this.commands = buildCommandCollection();
     this.auditLogger = new AuditLogger(this.client, this.config);
+    this.onboarding = new OnboardingManager(this.client, this.auditLogger, this.config);
   }
 
   async start() {
@@ -86,6 +89,7 @@ export class DiscordRuntime {
   ) {
     this.config = config;
     this.auditLogger.updateConfig(config);
+    this.onboarding.updateConfig(config);
 
     logger.debug("DiscordRuntime 設定を更新しました", {
       changedSections: context?.changedSections ?? [],
@@ -141,6 +145,14 @@ export class DiscordRuntime {
           guildId: member.guild.id,
         },
       });
+
+      void this.onboarding.handleMemberJoin(member).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error("オンボーディング処理中に予期しないエラーが発生しました", {
+          memberId: member.id,
+          message,
+        });
+      });
     });
 
     this.client.on(
@@ -178,6 +190,11 @@ export class DiscordRuntime {
     );
 
     this.client.on("interactionCreate", async (interaction) => {
+      if (interaction.isButton()) {
+        await this.onboarding.handleInteraction(interaction);
+        return;
+      }
+
       if (!interaction.isChatInputCommand()) {
         return;
       }

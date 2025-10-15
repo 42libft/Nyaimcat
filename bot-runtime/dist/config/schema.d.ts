@@ -18,6 +18,7 @@ export declare const ConfigSchema: z.ZodObject<{
         introduce: z.ZodOptional<z.ZodString>;
         verify: z.ZodOptional<z.ZodString>;
         guideline: z.ZodOptional<z.ZodString>;
+        rolesPanel: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>;
     roles: z.ZodDefault<z.ZodObject<{
         staffRoleIds: z.ZodDefault<z.ZodArray<z.ZodString>>;
@@ -41,6 +42,19 @@ export declare const ConfigSchema: z.ZodObject<{
         autoRoles: z.ZodDefault<z.ZodBoolean>;
         guidelineSync: z.ZodDefault<z.ZodBoolean>;
         scrimHelper: z.ZodDefault<z.ZodBoolean>;
+        countBotsInMemberCount: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+    onboarding: z.ZodDefault<z.ZodObject<{
+        guideUrl: z.ZodOptional<z.ZodString>;
+        guideLabel: z.ZodDefault<z.ZodString>;
+        rolesButtonLabel: z.ZodDefault<z.ZodString>;
+        rolesChannelId: z.ZodOptional<z.ZodString>;
+        dm: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+            template: z.ZodOptional<z.ZodString>;
+            fallbackMessage: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>;
+        timezone: z.ZodDefault<z.ZodString>;
     }, z.core.$strip>>;
     embeds: z.ZodDefault<z.ZodObject<{
         welcomeTemplate: z.ZodOptional<z.ZodString>;

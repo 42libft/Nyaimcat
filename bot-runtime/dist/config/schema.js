@@ -24,6 +24,7 @@ exports.ConfigSchema = zod_1.z.object({
         introduce: SnowflakeSchema.optional(),
         verify: SnowflakeSchema.optional(),
         guideline: SnowflakeSchema.optional(),
+        rolesPanel: SnowflakeSchema.optional(),
     }),
     roles: zod_1.z
         .object({
@@ -42,12 +43,35 @@ exports.ConfigSchema = zod_1.z.object({
         autoRoles: zod_1.z.boolean().default(false),
         guidelineSync: zod_1.z.boolean().default(false),
         scrimHelper: zod_1.z.boolean().default(false),
+        countBotsInMemberCount: zod_1.z.boolean().default(false),
     })
         .default({
         welcomeMessage: false,
         autoRoles: false,
         guidelineSync: false,
         scrimHelper: false,
+        countBotsInMemberCount: false,
+    }),
+    onboarding: zod_1.z
+        .object({
+        guideUrl: zod_1.z.string().url().optional(),
+        guideLabel: zod_1.z.string().min(1).default("サーバーガイドを見る"),
+        rolesButtonLabel: zod_1.z.string().min(1).default("ロールを選ぶ"),
+        rolesChannelId: SnowflakeSchema.optional(),
+        dm: zod_1.z
+            .object({
+            enabled: zod_1.z.boolean().default(true),
+            template: zod_1.z.string().optional(),
+            fallbackMessage: zod_1.z.string().optional(),
+        })
+            .default({ enabled: true }),
+        timezone: zod_1.z.string().default("Asia/Tokyo"),
+    })
+        .default({
+        guideLabel: "サーバーガイドを見る",
+        rolesButtonLabel: "ロールを選ぶ",
+        dm: { enabled: true },
+        timezone: "Asia/Tokyo",
     }),
     embeds: zod_1.z
         .object({

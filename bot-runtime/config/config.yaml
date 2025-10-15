@@ -9,6 +9,7 @@ channels:
   introduce: "456789012345678901"
   verify: "567890123456789012"
   guideline: "678901234567890123"
+  rolesPanel: "789012340987654321"
 
 roles:
   staffRoleIds:
@@ -33,7 +34,26 @@ features:
   autoRoles: true
   guidelineSync: false
   scrimHelper: false
+  countBotsInMemberCount: false
 
 embeds:
   welcomeTemplate: "./embeds/welcome.mdx"
   guidelineTemplate: "./embeds/guideline.mdx"
+  verifyTemplate: "./embeds/verify.mdx"
+
+onboarding:
+  guideUrl: "https://nyaimlab.example.com/guide"
+  guideLabel: "ガイドを読む"
+  rolesButtonLabel: "ロールを設定"
+  rolesChannelId: "789012340987654321"
+  timezone: "Asia/Tokyo"
+  dm:
+    enabled: true
+    template: |-
+      ようこそ、{{username}} さん！
+
+      サーバーガイドは {{guideUrl}} から確認できます。
+      ロール設定はこちら → {{rolesChannelMention}}
+      分からないことがあれば {{staffRoleMentions}} までご連絡ください。
+    fallbackMessage: |-
+      {{username}} さんへのDM送信に失敗しました。{{staffRoleMentions}} の皆さん、フォローをお願いします。
