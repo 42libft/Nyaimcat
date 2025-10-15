@@ -22,6 +22,9 @@ import {
 import type { SlashCommandModule } from "./commands/types";
 import { AuditLogger } from "./auditLogger";
 import { OnboardingManager } from "./onboarding/manager";
+import { VerifyManager } from "./verify/manager";
+import { RolesPanelManager } from "./roles/manager";
+import { IntroduceManager } from "./introduce/manager";
 
 export type DiscordClientOptions = {
   token: string;
@@ -49,6 +52,9 @@ export class DiscordRuntime {
   private config: BotConfig;
   private auditLogger: AuditLogger;
   private onboarding: OnboardingManager;
+  private verifyManager: VerifyManager;
+  private rolesManager: RolesPanelManager;
+  private introduceManager: IntroduceManager;
 
   constructor(options: DiscordClientOptions) {
     this.token = options.token;
@@ -65,6 +71,13 @@ export class DiscordRuntime {
     this.commands = buildCommandCollection();
     this.auditLogger = new AuditLogger(this.client, this.config);
     this.onboarding = new OnboardingManager(this.client, this.auditLogger, this.config);
+    this.verifyManager = new VerifyManager(this.client, this.auditLogger, this.config);
+    this.rolesManager = new RolesPanelManager(
+      this.client,
+      this.auditLogger,
+      this.config
+    );
+    this.introduceManager = new IntroduceManager(this.auditLogger, this.config);
   }
 
   async start() {
@@ -90,6 +103,9 @@ export class DiscordRuntime {
     this.config = config;
     this.auditLogger.updateConfig(config);
     this.onboarding.updateConfig(config);
+    this.verifyManager.updateConfig(config);
+    this.rolesManager.updateConfig(config);
+    this.introduceManager.updateConfig(config);
 
     logger.debug("DiscordRuntime 設定を更新しました", {
       changedSections: context?.changedSections ?? [],
@@ -162,6 +178,9 @@ export class DiscordRuntime {
         user: User | PartialUser
       ) => {
         try {
+          await this.verifyManager.handleReactionAdd(reaction, user);
+          await this.rolesManager.handleReactionAdd(reaction, user);
+
           const fullReaction = reaction.partial
             ? await reaction.fetch()
             : reaction;
@@ -189,9 +208,36 @@ export class DiscordRuntime {
       }
     );
 
+    this.client.on(
+      "messageReactionRemove",
+      async (
+        reaction: MessageReaction | PartialMessageReaction,
+        user: User | PartialUser
+      ) => {
+        try {
+          await this.rolesManager.handleReactionRemove(reaction, user);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn("リアクション削除処理でエラーが発生しました", { message });
+        }
+      }
+    );
+
     this.client.on("interactionCreate", async (interaction) => {
       if (interaction.isButton()) {
         await this.onboarding.handleInteraction(interaction);
+        await this.verifyManager.handleButton(interaction);
+        await this.rolesManager.handleButton(interaction);
+        return;
+      }
+
+      if (interaction.isStringSelectMenu()) {
+        await this.rolesManager.handleSelect(interaction);
+        return;
+      }
+
+      if (interaction.isModalSubmit()) {
+        await this.introduceManager.handleModalSubmit(interaction);
         return;
       }
 
@@ -246,7 +292,14 @@ export class DiscordRuntime {
     }
 
     try {
-      await command.execute(interaction, { config: this.config });
+      await command.execute(interaction, {
+        config: this.config,
+        client: this.client,
+        auditLogger: this.auditLogger,
+        verifyManager: this.verifyManager,
+        rolesManager: this.rolesManager,
+        introduceManager: this.introduceManager,
+      });
       await this.auditLogger.log({
         action: "command.execute",
         status: "success",

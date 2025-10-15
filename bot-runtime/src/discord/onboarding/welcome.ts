@@ -21,7 +21,7 @@ const fillTemplate = (template: string, values: TemplateValues) =>
   });
 
 const buildStaffRoleMentions = (config: BotConfig) => {
-  const staffRoles = config.roles?.staffRoleIds ?? [];
+  const staffRoles = config.roleAssignments?.staffRoleIds ?? [];
 
   if (!staffRoles.length) {
     return "";

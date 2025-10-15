@@ -8,7 +8,7 @@ const fillTemplate = (template, values) => template.replace(/\{\{(\w+)\}\}/g, (m
     return typeof replacement === "string" ? replacement : match;
 });
 const buildStaffRoleMentions = (config) => {
-    const staffRoles = config.roles?.staffRoleIds ?? [];
+    const staffRoles = config.roleAssignments?.staffRoleIds ?? [];
     if (!staffRoles.length) {
         return "";
     }

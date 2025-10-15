@@ -6,6 +6,9 @@ const logger_1 = require("../utils/logger");
 const index_1 = require("./commands/index");
 const auditLogger_1 = require("./auditLogger");
 const manager_1 = require("./onboarding/manager");
+const manager_2 = require("./verify/manager");
+const manager_3 = require("./roles/manager");
+const manager_4 = require("./introduce/manager");
 const buildIntentList = () => [
     discord_js_1.GatewayIntentBits.Guilds,
     discord_js_1.GatewayIntentBits.GuildMembers,
@@ -27,6 +30,9 @@ class DiscordRuntime {
         this.commands = (0, index_1.buildCommandCollection)();
         this.auditLogger = new auditLogger_1.AuditLogger(this.client, this.config);
         this.onboarding = new manager_1.OnboardingManager(this.client, this.auditLogger, this.config);
+        this.verifyManager = new manager_2.VerifyManager(this.client, this.auditLogger, this.config);
+        this.rolesManager = new manager_3.RolesPanelManager(this.client, this.auditLogger, this.config);
+        this.introduceManager = new manager_4.IntroduceManager(this.auditLogger, this.config);
     }
     async start() {
         await this.registerSlashCommands();
@@ -46,6 +52,9 @@ class DiscordRuntime {
         this.config = config;
         this.auditLogger.updateConfig(config);
         this.onboarding.updateConfig(config);
+        this.verifyManager.updateConfig(config);
+        this.rolesManager.updateConfig(config);
+        this.introduceManager.updateConfig(config);
         logger_1.logger.debug("DiscordRuntime 設定を更新しました", {
             changedSections: context?.changedSections ?? [],
             hash: context?.hash,
@@ -103,6 +112,8 @@ class DiscordRuntime {
         });
         this.client.on("messageReactionAdd", async (reaction, user) => {
             try {
+                await this.verifyManager.handleReactionAdd(reaction, user);
+                await this.rolesManager.handleReactionAdd(reaction, user);
                 const fullReaction = reaction.partial
                     ? await reaction.fetch()
                     : reaction;
@@ -127,9 +138,28 @@ class DiscordRuntime {
                 logger_1.logger.warn("リアクション情報の取得に失敗しました", { message });
             }
         });
+        this.client.on("messageReactionRemove", async (reaction, user) => {
+            try {
+                await this.rolesManager.handleReactionRemove(reaction, user);
+            }
+            catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                logger_1.logger.warn("リアクション削除処理でエラーが発生しました", { message });
+            }
+        });
         this.client.on("interactionCreate", async (interaction) => {
             if (interaction.isButton()) {
                 await this.onboarding.handleInteraction(interaction);
+                await this.verifyManager.handleButton(interaction);
+                await this.rolesManager.handleButton(interaction);
+                return;
+            }
+            if (interaction.isStringSelectMenu()) {
+                await this.rolesManager.handleSelect(interaction);
+                return;
+            }
+            if (interaction.isModalSubmit()) {
+                await this.introduceManager.handleModalSubmit(interaction);
                 return;
             }
             if (!interaction.isChatInputCommand()) {
@@ -176,7 +206,14 @@ class DiscordRuntime {
             return;
         }
         try {
-            await command.execute(interaction, { config: this.config });
+            await command.execute(interaction, {
+                config: this.config,
+                client: this.client,
+                auditLogger: this.auditLogger,
+                verifyManager: this.verifyManager,
+                rolesManager: this.rolesManager,
+                introduceManager: this.introduceManager,
+            });
             await this.auditLogger.log({
                 action: "command.execute",
                 status: "success",

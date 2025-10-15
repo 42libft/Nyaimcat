@@ -11,7 +11,7 @@ channels:
   guideline: "678901234567890123"
   rolesPanel: "789012340987654321"
 
-roles:
+roleAssignments:
   staffRoleIds:
     - "789012345678901234"
   autoAssign:
@@ -57,3 +57,59 @@ onboarding:
       分からないことがあれば {{staffRoleMentions}} までご連絡ください。
     fallbackMessage: |-
       {{username}} さんへのDM送信に失敗しました。{{staffRoleMentions}} の皆さん、フォローをお願いします。
+
+verify:
+  channel_id: "567890123456789012"
+  role_id: "890123456789012345"
+  mode: "button"
+  prompt: "ボタンを押して認証を完了してください。"
+  message_id: null
+  emoji: "✅"
+
+roles:
+  channel_id: "789012340987654321"
+  style: "buttons"
+  message_id: null
+  message_content: "希望するロールを選択してください。"
+  roles:
+    - role_id: "112233445566778899"
+      label: "Valor"
+      description: "赤チームのメンバー"
+      emoji: "🟥"
+    - role_id: "998877665544332211"
+      label: "Mystic"
+      description: "青チームのメンバー"
+      emoji: "🟦"
+
+role_emoji_map:
+  "112233445566778899": "🟥"
+  "998877665544332211": "🟦"
+
+introduce:
+  channel_id: "456789012345678901"
+  mention_role_ids:
+    - "789012345678901234"
+  embed_title: "自己紹介"
+  footer_text: "Nyaimlab"
+
+introduce_schema:
+  fields:
+    - field_id: "name"
+      label: "お名前"
+      placeholder: "例: Nyaim"
+      required: true
+      enabled: true
+      max_length: 80
+    - field_id: "bio"
+      label: "ひとこと"
+      placeholder: "自由に記入してください"
+      required: true
+      enabled: true
+      max_length: 300
+
+settings:
+  locale: "ja-JP"
+  timezone: "Asia/Tokyo"
+  member_index_mode: "exclude_bots"
+  member_count_strategy: "human_only"
+  show_join_alerts: true

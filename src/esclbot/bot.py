@@ -195,8 +195,8 @@ def _aggregate_player_totals(df_all: pd.DataFrame) -> pd.DataFrame:
     return grouped[out_cols]
 
 # ===== Commands =====
-@BOT.tree.command(name="escl_version", description="Botのバージョン表示（動いているコード確認用）")
-async def escl_version(inter: discord.Interaction):
+@BOT.tree.command(name="version", description="Botのバージョン表示（動いているコード確認用）")
+async def version(inter: discord.Interaction):
     await inter.response.send_message(f"{__BOT_VERSION__}", ephemeral=True)
 
 @BOT.tree.command(name="escl_from_parent_csv", description="グループURL1本からAPI直叩きで6試合CSV（生データALL_GAMES相当）")

@@ -16,6 +16,9 @@ export declare class DiscordRuntime {
     private config;
     private auditLogger;
     private onboarding;
+    private verifyManager;
+    private rolesManager;
+    private introduceManager;
     constructor(options: DiscordClientOptions);
     start(): Promise<void>;
     applyConfigUpdate(config: BotConfig, context?: {
