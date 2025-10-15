@@ -23,47 +23,32 @@
 ### 共通の仮想環境について
 必要に応じて `python -m venv .venv` などで仮想環境を作成し、アクティベートしてから上記コマンドを実行してください。
 
-## ESCL Scrim Collector Bot (Python)
-ESCL のグループページ URL を入力すると、ESCL 公開 API を直接叩いて 6 試合分の集計データを取得し、Discord 上で CSV / Excel ファイルとして配布します。
+## ESCL Scrim Collector（Python）
+ESCL 公開 API を叩いて 6 試合分のデータを取得し、集計済みの CSV / Excel を生成します。現在は CLI として提供しており、Node.js ランタイムからも内部的に呼び出されます。
 
-### 事前準備（はじめての方向け）
-1. サンプル設定をコピーして `.env` を作る。
-   ```bash
-   cp .env.example .env
-   ```
-2. `.env` をエディタで開き、`DISCORD_TOKEN` の値を自分の Bot トークンに差し替える。
-3. 任意で `GUILD_ID` を書けば、特定ギルドだけにスラッシュコマンドを同期できる。
-
-### 起動の流れ
-1. ルートフォルダで下記コマンドを実行。
-   ```bash
-   ./scripts/run_esclbot.sh
-   ```
-2. 初回は仮想環境 `.venv` の作成と依存パッケージのインストールを自動で実施。
-3. `.env` が未設定だった場合はテンプレートをコピーして終了するので、中身を編集してもう一度実行。
-4. Bot が起動するとスラッシュコマンドを同期し、Discord 上で `/version` などが使えるようになる。
-
-### 手動で動かしたい場合
-仮想環境を自分で管理したいときは、従来通り次のコマンドで起動してもよい。
+### CLI での利用例
 ```bash
-python -m src.esclbot.bot
+# バージョン表示
+python -m src.esclbot.cli version
+
+# CSV 生成（ALL_GAMES相当）
+python -m src.esclbot.cli csv "https://fightnt.escl.co.jp/scrims/..." --group G5
+
+# Excel 生成（GAME1..6 / ALL_GAMES / TEAM_TOTALS）
+python -m src.esclbot.cli xlsx "https://fightnt.escl.co.jp/scrims/..." --group G5
 ```
-（仮想環境の有効化や依存インストールは事前に済ませておくこと。）
 
-### 提供コマンド
-- `/version`  
-  現在稼働中の Bot バージョンを表示します。
-- `/escl_from_parent_csv parent_url:<url> group:<任意>`  
-  指定したグループページから 6 試合分の明細を取得し、Google スプレッドシート対応の CSV を返します。
-- `/escl_from_parent_xlsx parent_url:<url> group:<任意>`  
-  CSV と同じ生データに加え、Excel ワークブックに `GAME1..6` シート、`ALL_GAMES`（プレイヤー別合計）、`TEAM_TOTALS`（チーム別合計）を含めたファイルを返します。
+コマンドは JSON を標準出力に返し、`content` フィールドに base64 でエンコードされたファイルを含みます。Node.js ランタイムはこの CLI を利用して Discord へ添付ファイルを返信します。
 
-どちらのコマンドも URL からスクラム名とグループ番号を推定し、ファイル名に反映します。URL が複数記載されているメッセージでも最初の URL を正しく抽出します。
+- CSV / Excel はいずれも UTF-8。列見出しは ESCL の公開データに準拠し、`scrim_id` / `group` / `game` を付与しています。
+- Excel 版では命中率・ヘッドショット率を再計算し、`ALL_GAMES` と `TEAM_TOTALS` の集計シートを含みます。
 
-### 出力仕様
-- CSV/Excel ともに UTF-8。列見出しは ESCL の公開データと一致し、`scrim_id` / `group` / `game` を付与しています。
-- Excel 版では命中率やヘッドショット率を再計算し、並び替え済みの集計シートを含めます。
-- 取得に失敗した場合はエラーメッセージを返信します。
+### 参考: 旧来の Discord Bot として起動したい場合
+従来同様に Python 製 Discord Bot として動作させたい場合は、`.env` に Bot トークンを設定した上で次のスクリプトを利用してください。
+```bash
+./scripts/run_esclbot.sh
+```
+（Node.js ランタイムと同一トークンを共有すると Slash Command が上書きされる点にご注意ください。）
 
 ## Nyaimlab 管理 API (FastAPI)
 `src/nyaimlab/` には Pages 向けダッシュボードのバックエンドを提供する FastAPI アプリが含まれています。状態はインメモリで管理し、すべてのリクエストに対して監査ログを記録します。
@@ -122,6 +107,27 @@ cp .env.example .env
 - `npm run dev`: `ts-node-dev` によるホットリロード起動
 - `npm run build`: TypeScript を `dist/` にビルド
 - `npm start`: ビルド済み `dist/index.js` を実行
+
+### 提供コマンド
+- `/version` — Python ESCL Bot と Node ランタイムのバージョンを表示（エフェメラル）
+- `/escl_from_parent_csv parent_url:<URL> group:<任意>` — ESCL グループから 6 試合分の CSV を生成
+- `/escl_from_parent_xlsx parent_url:<URL> group:<任意>` — 同データの Excel（GAME1..6 / ALL_GAMES / TEAM_TOTALS）を生成
+- `/ping` — 応答遅延を確認（エフェメラル）
+- `/verify post [channel:<チャンネル>]` — 認証パネルを投稿／更新
+- `/roles post [channel:<チャンネル>]` — ロール配布パネルを投稿／更新
+- `/introduce` — 自己紹介モーダルを開き、設定チャンネルへ投稿
+
+### Python / Node 両方の Bot を同時に起動する
+ルート直下の `scripts/run_bots.sh` は、Slash Command を統合した Node.js ランタイムを起動しつつ、必要な Python 依存関係（ESCL CLI）を整備します。初回は `.venv` の作成や npm 依存インストール、`.env` テンプレートのコピーを自動で行います。
+
+```bash
+./scripts/run_bots.sh
+```
+
+停止する際は `Ctrl + C` で Node.js プロセスを終了できます。旧来の Python Bot も併せて起動したい場合は、`RUN_PYTHON_BOT=1 ./scripts/run_bots.sh` のように実行してください。
+
+> **注意:** Python Bot 用の `.env` と Node.js ランタイム用の `bot-runtime/.env` には、それぞれ別の Bot アプリケーション（Discordトークン）を設定してください。  
+> 同じトークンを使うと Slash Command が上書きされるため、`run_bots.sh` がエラーで停止します。意図的に同じトークンを使う場合は `ALLOW_SHARED_TOKEN=1 ./scripts/run_bots.sh` のように実行してください。
 
 ## テスト
 - Python 側: `pytest`

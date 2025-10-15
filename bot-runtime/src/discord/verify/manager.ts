@@ -8,6 +8,7 @@ import {
   GuildTextBasedChannel,
   Message,
   MessageReaction,
+  PartialGuildMember,
   PartialMessageReaction,
   PartialUser,
   User,
@@ -258,6 +259,71 @@ export class VerifyManager {
     }
   }
 
+  async handleMemberRemove(
+    member: GuildMember | PartialGuildMember
+  ): Promise<boolean> {
+    const verifyConfig = this.getVerifyConfig();
+
+    if (!verifyConfig) {
+      return false;
+    }
+
+    const roleId = verifyConfig.role_id;
+    const hadRole = this.hasRole(member, roleId);
+
+    if (!hadRole) {
+      return false;
+    }
+
+    await this.auditLogger.log({
+      action: "verify.revoke",
+      status: "info",
+      details: {
+        userId: member.id,
+        roleId,
+        reason: "member_left",
+        guildId:
+          "guild" in member && member.guild
+            ? member.guild.id
+            : this.config.guild.id,
+      },
+    });
+
+    return true;
+  }
+
+  async handleMemberUpdate(
+    oldMember: GuildMember | PartialGuildMember,
+    newMember: GuildMember
+  ): Promise<boolean> {
+    const verifyConfig = this.getVerifyConfig();
+
+    if (!verifyConfig) {
+      return false;
+    }
+
+    const roleId = verifyConfig.role_id;
+    const hadBefore = this.hasRole(oldMember, roleId);
+    const hasAfter = this.hasRole(newMember, roleId);
+
+    if (!hadBefore || hasAfter) {
+      return false;
+    }
+
+    await this.auditLogger.log({
+      action: "verify.revoke",
+      status: "info",
+      details: {
+        userId: newMember.id,
+        roleId,
+        reason: "role_removed",
+        guildId: newMember.guild.id,
+      },
+    });
+
+    return true;
+  }
+
   private buildMessagePayload(verifyConfig: VerifyConfig) {
     if (verifyConfig.mode === "button") {
       const button = new ButtonBuilder()
@@ -284,6 +350,33 @@ export class VerifyManager {
 
   private getVerifyConfig(): VerifyConfig | null {
     return this.config.verify ?? null;
+  }
+
+  private hasRole(
+    member: GuildMember | PartialGuildMember | null,
+    roleId: string
+  ): boolean {
+    if (!member) {
+      return false;
+    }
+
+    const roles = member.roles;
+
+    if (!roles) {
+      return false;
+    }
+
+    try {
+      return roles.cache.has(roleId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.debug("ロール状態の確認に失敗しました", {
+        roleId,
+        message,
+        memberId: member.id,
+      });
+      return false;
+    }
   }
 
   private async grantRole(
@@ -327,10 +420,10 @@ export class VerifyManager {
           description: "既に認証済みのメンバーです",
           details: {
             userId: member.id,
-          roleId,
-          reason: context.reason,
-        },
-      });
+            roleId,
+            reason: context.reason,
+          },
+        });
       }
       return false;
     }

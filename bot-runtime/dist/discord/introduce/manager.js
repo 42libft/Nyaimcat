@@ -28,7 +28,7 @@ class IntroduceManager {
         if (!introduceConfig) {
             await interaction.reply({
                 content: "自己紹介の設定が存在しません。運営にお問い合わせください。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
@@ -36,7 +36,7 @@ class IntroduceManager {
         if (!modal) {
             await interaction.reply({
                 content: "自己紹介フォームが未設定のため、投稿できません。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
@@ -51,7 +51,7 @@ class IntroduceManager {
         if (!introduceConfig || !interaction.guild) {
             await interaction.reply({
                 content: "現在自己紹介は利用できません。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
@@ -59,8 +59,17 @@ class IntroduceManager {
         if (!channelId) {
             await interaction.reply({
                 content: "投稿先チャンネルが設定されていません。運営にお問い合わせください。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
+            return;
+        }
+        try {
+            await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger_1.logger.error("自己紹介応答の確保に失敗しました", { message, channelId });
+            await this.safeErrorReply(interaction, "自己紹介の投稿に失敗しました。もう一度お試しください。");
             return;
         }
         try {
@@ -77,11 +86,14 @@ class IntroduceManager {
             const message = await channel.send({
                 content,
                 embeds: [embed],
-                allowedMentions: { parse: ["users", "roles"], users: [member.id] },
+                allowedMentions: {
+                    users: [member.id],
+                    roles: introduceConfig.mention_role_ids ?? [],
+                    repliedUser: false,
+                },
             });
-            await interaction.reply({
+            await interaction.editReply({
                 content: `自己紹介を <#${channelId}> に投稿しました。`,
-                ephemeral: true,
             });
             await this.auditLogger.log({
                 action: "introduce.post",
@@ -95,19 +107,8 @@ class IntroduceManager {
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            logger_1.logger.error("自己紹介の投稿に失敗しました", { message });
-            if (interaction.deferred || interaction.replied) {
-                await interaction.followUp({
-                    content: `自己紹介の投稿に失敗しました: ${message}`,
-                    ephemeral: true,
-                });
-            }
-            else {
-                await interaction.reply({
-                    content: `自己紹介の投稿に失敗しました: ${message}`,
-                    ephemeral: true,
-                });
-            }
+            logger_1.logger.error("自己紹介の投稿に失敗しました", { message, channelId });
+            await this.safeErrorReply(interaction, `自己紹介の投稿に失敗しました: ${message}`);
             await this.auditLogger.log({
                 action: "introduce.post",
                 status: "failure",
@@ -191,6 +192,25 @@ class IntroduceManager {
             embed.setThumbnail(avatarUrl);
         }
         return embed;
+    }
+    async safeErrorReply(interaction, content) {
+        try {
+            if (interaction.deferred) {
+                await interaction.editReply({ content });
+                return;
+            }
+            if (interaction.replied) {
+                await interaction.followUp({ content, flags: discord_js_1.MessageFlags.Ephemeral });
+                return;
+            }
+            if (interaction.isRepliable()) {
+                await interaction.reply({ content, flags: discord_js_1.MessageFlags.Ephemeral });
+            }
+        }
+        catch (replyError) {
+            const message = replyError instanceof Error ? replyError.message : String(replyError);
+            logger_1.logger.warn("自己紹介エラー応答の送信に失敗しました", { message });
+        }
     }
     buildMessageContent(config, member, values) {
         const mentions = [member.toString()];

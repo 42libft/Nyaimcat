@@ -5,8 +5,14 @@ import { introduceCommand } from "./introduce";
 import { pingCommand } from "./ping";
 import { rolesCommand } from "./roles";
 import { verifyCommand } from "./verify";
+import { versionCommand } from "./version";
+import { esclFromParentCsvCommand } from "./esclCsv";
+import { esclFromParentXlsxCommand } from "./esclXlsx";
 
 export const commandModules: SlashCommandModule[] = [
+  versionCommand,
+  esclFromParentCsvCommand,
+  esclFromParentXlsxCommand,
   pingCommand,
   verifyCommand,
   rolesCommand,

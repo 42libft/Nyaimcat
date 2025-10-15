@@ -4,12 +4,12 @@ guild:
   ownerId: "987654321098765432"
 
 channels:
-  auditLog: "234567890123456789"
-  welcome: "345678901234567890"
-  introduce: "456789012345678901"
-  verify: "567890123456789012"
-  guideline: "678901234567890123"
-  rolesPanel: "789012340987654321"
+  auditLog: "1427900653392367678"
+  welcome: "1411214661612867624"
+  introduce: "1411214661612867624"
+  verify: "1411214661612867624"
+  guideline: "1411214661612867624"
+  rolesPanel: "1411214661612867624"
 
 roleAssignments:
   staffRoleIds:
@@ -45,7 +45,7 @@ onboarding:
   guideUrl: "https://nyaimlab.example.com/guide"
   guideLabel: "ガイドを読む"
   rolesButtonLabel: "ロールを設定"
-  rolesChannelId: "789012340987654321"
+  rolesChannelId: "1411214661612867624"
   timezone: "Asia/Tokyo"
   dm:
     enabled: true
@@ -59,7 +59,7 @@ onboarding:
       {{username}} さんへのDM送信に失敗しました。{{staffRoleMentions}} の皆さん、フォローをお願いします。
 
 verify:
-  channel_id: "567890123456789012"
+  channel_id: "1411214661612867624"
   role_id: "890123456789012345"
   mode: "button"
   prompt: "ボタンを押して認証を完了してください。"
@@ -67,7 +67,7 @@ verify:
   emoji: "✅"
 
 roles:
-  channel_id: "789012340987654321"
+  channel_id: "1411214661612867624"
   style: "buttons"
   message_id: null
   message_content: "希望するロールを選択してください。"
@@ -86,7 +86,7 @@ role_emoji_map:
   "998877665544332211": "🟦"
 
 introduce:
-  channel_id: "456789012345678901"
+  channel_id: "1411214661612867624"
   mention_role_ids:
     - "789012345678901234"
   embed_title: "自己紹介"

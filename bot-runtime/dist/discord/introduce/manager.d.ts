@@ -14,6 +14,7 @@ export declare class IntroduceManager {
     private buildModal;
     private collectSubmissionValues;
     private buildEmbed;
+    private safeErrorReply;
     private buildMessageContent;
 }
 export { INTRODUCE_MODAL_ID };

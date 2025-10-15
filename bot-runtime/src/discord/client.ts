@@ -7,6 +7,7 @@ import {
   Routes,
   type ChatInputCommandInteraction,
   type GuildMember,
+  type PartialGuildMember,
   type MessageReaction,
   type PartialMessageReaction,
   type PartialUser,
@@ -40,7 +41,12 @@ const buildIntentList = () => [
   GatewayIntentBits.GuildMessageReactions,
 ];
 
-const PARTIALS = [Partials.Message, Partials.Channel, Partials.Reaction];
+const PARTIALS = [
+  Partials.Message,
+  Partials.Channel,
+  Partials.Reaction,
+  Partials.GuildMember,
+];
 
 export class DiscordRuntime {
   private readonly token: string;
@@ -170,6 +176,68 @@ export class DiscordRuntime {
         });
       });
     });
+
+    this.client.on("guildMemberRemove", async (member) => {
+      const guildId =
+        "guild" in member && member.guild
+          ? member.guild.id
+          : this.config.guild.id;
+
+      logger.info("メンバー退会を検知しました", {
+        memberId: member.id,
+        guildId,
+      });
+
+      let hadVerifyRole = false;
+
+      try {
+        hadVerifyRole = await this.verifyManager.handleMemberRemove(member);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn("Verify退会処理でエラーが発生しました", {
+          memberId: member.id,
+          message,
+        });
+      }
+
+      void this.auditLogger.log({
+        action: "member.leave",
+        status: "info",
+        details: {
+          memberId: member.id,
+          guildId,
+          hadVerifyRole,
+        },
+      });
+    });
+
+    this.client.on(
+      "guildMemberUpdate",
+      async (
+        oldMember: GuildMember | PartialGuildMember,
+        newMember: GuildMember
+      ) => {
+        try {
+          const revoked = await this.verifyManager.handleMemberUpdate(
+            oldMember,
+            newMember
+          );
+
+          if (revoked) {
+            logger.info("Verifyロールが剥奪されました", {
+              memberId: newMember.id,
+              guildId: newMember.guild.id,
+            });
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn("Verifyロール剥奪監査でエラーが発生しました", {
+            memberId: newMember.id,
+            message,
+          });
+        }
+      }
+    );
 
     this.client.on(
       "messageReactionAdd",
@@ -316,15 +384,24 @@ export class DiscordRuntime {
         message,
       });
 
-      if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({
-          content: "コマンド実行中にエラーが発生しました。",
-          ephemeral: true,
-        });
-      } else {
-        await interaction.reply({
-          content: "コマンド実行中にエラーが発生しました。",
-          ephemeral: true,
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({
+            content: "コマンド実行中にエラーが発生しました。",
+            ephemeral: true,
+          });
+        } else if (interaction.isRepliable()) {
+          await interaction.reply({
+            content: "コマンド実行中にエラーが発生しました。",
+            ephemeral: true,
+          });
+        }
+      } catch (responseError) {
+        const responseMessage =
+          responseError instanceof Error ? responseError.message : String(responseError);
+        logger.warn("エラー通知の送信に失敗しました", {
+          name: command.data.name,
+          message: responseMessage,
         });
       }
 

@@ -51,15 +51,14 @@ const handlePost = async (interaction, context) => {
         });
         return;
     }
+    await interaction.deferReply({ ephemeral: true });
     if (!(await hasManagePermission(interaction, context))) {
-        await interaction.reply({
+        await interaction.editReply({
             content: "この操作を実行する権限が不足しています。",
-            ephemeral: true,
         });
         return;
     }
     const channel = interaction.options.getChannel("channel");
-    await interaction.deferReply({ ephemeral: true });
     try {
         const result = await context.rolesManager.publish({
             executorId: interaction.user.id,

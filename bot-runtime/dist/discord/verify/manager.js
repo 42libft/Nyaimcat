@@ -179,6 +179,53 @@ class VerifyManager {
             logger_1.logger.warn("Verifyリアクション処理でエラーが発生しました", { message });
         }
     }
+    async handleMemberRemove(member) {
+        const verifyConfig = this.getVerifyConfig();
+        if (!verifyConfig) {
+            return false;
+        }
+        const roleId = verifyConfig.role_id;
+        const hadRole = this.hasRole(member, roleId);
+        if (!hadRole) {
+            return false;
+        }
+        await this.auditLogger.log({
+            action: "verify.revoke",
+            status: "info",
+            details: {
+                userId: member.id,
+                roleId,
+                reason: "member_left",
+                guildId: "guild" in member && member.guild
+                    ? member.guild.id
+                    : this.config.guild.id,
+            },
+        });
+        return true;
+    }
+    async handleMemberUpdate(oldMember, newMember) {
+        const verifyConfig = this.getVerifyConfig();
+        if (!verifyConfig) {
+            return false;
+        }
+        const roleId = verifyConfig.role_id;
+        const hadBefore = this.hasRole(oldMember, roleId);
+        const hasAfter = this.hasRole(newMember, roleId);
+        if (!hadBefore || hasAfter) {
+            return false;
+        }
+        await this.auditLogger.log({
+            action: "verify.revoke",
+            status: "info",
+            details: {
+                userId: newMember.id,
+                roleId,
+                reason: "role_removed",
+                guildId: newMember.guild.id,
+            },
+        });
+        return true;
+    }
     buildMessagePayload(verifyConfig) {
         if (verifyConfig.mode === "button") {
             const button = new discord_js_1.ButtonBuilder()
@@ -197,6 +244,27 @@ class VerifyManager {
     }
     getVerifyConfig() {
         return this.config.verify ?? null;
+    }
+    hasRole(member, roleId) {
+        if (!member) {
+            return false;
+        }
+        const roles = member.roles;
+        if (!roles) {
+            return false;
+        }
+        try {
+            return roles.cache.has(roleId);
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger_1.logger.debug("ロール状態の確認に失敗しました", {
+                roleId,
+                message,
+                memberId: member.id,
+            });
+            return false;
+        }
     }
     async grantRole(member, verifyConfig, interaction) {
         try {

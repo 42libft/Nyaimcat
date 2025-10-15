@@ -6,7 +6,13 @@ const introduce_1 = require("./introduce");
 const ping_1 = require("./ping");
 const roles_1 = require("./roles");
 const verify_1 = require("./verify");
+const version_1 = require("./version");
+const esclCsv_1 = require("./esclCsv");
+const esclXlsx_1 = require("./esclXlsx");
 exports.commandModules = [
+    version_1.versionCommand,
+    esclCsv_1.esclFromParentCsvCommand,
+    esclXlsx_1.esclFromParentXlsxCommand,
     ping_1.pingCommand,
     verify_1.verifyCommand,
     roles_1.rolesCommand,

@@ -1,4 +1,4 @@
-import { ButtonInteraction, Client, Message, MessageReaction, PartialMessageReaction, PartialUser, User } from "discord.js";
+import { ButtonInteraction, Client, GuildMember, Message, MessageReaction, PartialGuildMember, PartialMessageReaction, PartialUser, User } from "discord.js";
 import type { BotConfig } from "../../config";
 import type { AuditLogger } from "../auditLogger";
 declare const VERIFY_BUTTON_ID = "verify:grant";
@@ -20,8 +20,11 @@ export declare class VerifyManager {
     publish(options: PublishOptions): Promise<PublishResult>;
     handleButton(interaction: ButtonInteraction): Promise<void>;
     handleReactionAdd(reaction: MessageReaction | PartialMessageReaction, user: User | PartialUser): Promise<void>;
+    handleMemberRemove(member: GuildMember | PartialGuildMember): Promise<boolean>;
+    handleMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember): Promise<boolean>;
     private buildMessagePayload;
     private getVerifyConfig;
+    private hasRole;
     private grantRole;
     private applyRole;
 }
