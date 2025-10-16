@@ -10,6 +10,47 @@ log() {
   printf '[run-bots] %s\n' "$*"
 }
 
+STATE_DIR=".runtime"
+PID_DIR="$STATE_DIR/pids"
+NODE_PID_FILE="$PID_DIR/node.pid"
+PYTHON_PID_FILE="$PID_DIR/python.pid"
+
+ensure_state_dir() {
+  mkdir -p "$PID_DIR"
+}
+
+read_pid_file() {
+  local file="$1"
+  if [ ! -f "$file" ]; then
+    return
+  fi
+  tr -d '[:space:]' <"$file"
+}
+
+is_pid_active() {
+  local file="$1"
+  local pid
+  pid="$(read_pid_file "$file")"
+  if [ -z "${pid:-}" ]; then
+    return 1
+  fi
+  if kill -0 "$pid" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+clear_pid_file() {
+  local file="$1"
+  rm -f "$file"
+}
+
+write_pid_file() {
+  local file="$1"
+  local pid="$2"
+  printf '%s\n' "$pid" >"$file"
+}
+
 determine_python_bin() {
   if command -v "$PYTHON_BIN" >/dev/null 2>&1; then
     return
@@ -105,6 +146,9 @@ cleanup() {
     kill -- -"$NODE_PID" >/dev/null 2>&1 || kill "$NODE_PID" >/dev/null 2>&1 || true
     wait "$NODE_PID" >/dev/null 2>&1 || true
   fi
+
+  clear_pid_file "$PYTHON_PID_FILE"
+  clear_pid_file "$NODE_PID_FILE"
 }
 
 trap cleanup EXIT INT TERM
@@ -113,6 +157,29 @@ determine_python_bin
 activate_python_env
 ensure_python_dependencies
 ensure_node_dependencies
+
+ensure_state_dir
+clear_pid_file "$PYTHON_PID_FILE"
+clear_pid_file "$NODE_PID_FILE"
+
+guard_duplicate_processes() {
+  local name="$1"
+  local file="$2"
+  if is_pid_active "$file"; then
+    local pid
+    pid="$(read_pid_file "$file")"
+    cat <<EOF >&2
+[error] ${name} が既に稼働中です (PID: ${pid})。
+scripts/stop_bots.sh を実行して既存プロセスを停止してください。
+EOF
+    exit 1
+  fi
+}
+
+if [ "${RUN_PYTHON_BOT:-0}" = "1" ]; then
+  guard_duplicate_processes "Python Bot" "$PYTHON_PID_FILE"
+fi
+guard_duplicate_processes "Node.js Bot" "$NODE_PID_FILE"
 
 get_env_value() {
   local file="$1"
@@ -142,6 +209,7 @@ if [ "${RUN_PYTHON_BOT:-0}" = "1" ]; then
   log "Python Bot を起動します。"
   python -m src.esclbot.bot &
   PYTHON_PID=$!
+  write_pid_file "$PYTHON_PID_FILE" "$PYTHON_PID"
 else
   log "Python Bot は起動しません（Node.jsランタイムがSlashコマンドを統合します）。"
 fi
@@ -149,6 +217,7 @@ fi
 log "Node.js Bot を起動します。"
 (cd bot-runtime && npm run dev) &
 NODE_PID=$!
+write_pid_file "$NODE_PID_FILE" "$NODE_PID"
 
 EXIT_CODE=0
 EXIT_SOURCE=""
@@ -168,5 +237,7 @@ while :; do
 done
 
 log "$EXIT_SOURCE Bot が終了しました (code: $EXIT_CODE)。"
+clear_pid_file "$PYTHON_PID_FILE"
+clear_pid_file "$NODE_PID_FILE"
 
 exit "$EXIT_CODE"

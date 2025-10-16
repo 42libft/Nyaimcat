@@ -85,7 +85,7 @@ export class ConfigWatcher {
   }
 
   private async refresh() {
-    const result = await loadConfig(this.path);
+    const result = await loadConfig(this.path, { logSuccess: false });
 
     if (!result.ok) {
       const error = new Error(result.message);

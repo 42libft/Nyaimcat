@@ -50,7 +50,7 @@ class ConfigWatcher {
         return this.currentConfig;
     }
     async refresh() {
-        const result = await (0, loader_1.loadConfig)(this.path);
+        const result = await (0, loader_1.loadConfig)(this.path, { logSuccess: false });
         if (!result.ok) {
             const error = new Error(result.message);
             logger_1.logger.warn("設定の再読み込みに失敗しました。前回の設定を維持します", {

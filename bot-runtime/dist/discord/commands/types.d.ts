@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction, Client, SlashCommandBuilder } from "discord.js";
+import type { ChatInputCommandInteraction, Client, SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from "discord.js";
 import type { BotConfig } from "../../config";
 import type { AuditLogger } from "../auditLogger";
 import type { VerifyManager } from "../verify/manager";
@@ -13,7 +13,7 @@ export type CommandExecuteContext = {
     introduceManager: IntroduceManager;
 };
 export type SlashCommandModule = {
-    data: SlashCommandBuilder;
+    data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
     execute: (interaction: ChatInputCommandInteraction, context: CommandExecuteContext) => Promise<void>;
 };
 //# sourceMappingURL=types.d.ts.map

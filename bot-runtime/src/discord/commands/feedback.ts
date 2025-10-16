@@ -1,4 +1,10 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import {
+  DiscordAPIError,
+  MessageFlags,
+  RESTJSONErrorCodes,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+} from "discord.js";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -141,22 +147,73 @@ const execute = async (
   const detail = interaction.options.getString("detail", true);
   const extraOptionName = subcommand === "bug" ? "steps" : "impact";
   const extra = interaction.options.getString(extraOptionName, false);
+  const errorResponse =
+    "申し訳ありません、保存中にエラーが発生しました。時間をおいて再度お試しください。";
+  const processingMessage =
+    "フィードバックを受け付けました。保存処理を開始します…";
+
+  let initialReplySent = false;
 
   try {
-    const result = await saveFeedback({
-      type: subcommand,
-      title,
-      detail,
-      extra,
-    }, interaction);
-
     await interaction.reply({
-      content: [
-        "フィードバックありがとうございます！", 
-        `ファイル名: \`${result.filename}\``,
-      ].join("\n"),
-      ephemeral: true,
+      content: processingMessage,
+      flags: MessageFlags.Ephemeral,
     });
+    initialReplySent = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      error instanceof DiscordAPIError ? error.code : undefined;
+    const conflict =
+      error instanceof DiscordAPIError &&
+      (code === RESTJSONErrorCodes.UnknownInteraction ||
+        code === RESTJSONErrorCodes.InteractionHasAlreadyBeenAcknowledged);
+
+    const logFn = conflict ? logger.debug : logger.warn;
+
+    logFn("フィードバック応答の初期化に失敗しました", {
+      message,
+      code,
+      subcommand,
+      interactionId: interaction.id,
+    });
+
+    if (!conflict) {
+      await context.auditLogger.log({
+        action: `feedback.${subcommand}`,
+        status: "failure",
+        description: "初期応答の送信に失敗しました",
+        details: {
+          userId: interaction.user.id,
+          channelId: interaction.channel?.id ?? null,
+          error: message,
+          code,
+        },
+      });
+    }
+
+    return;
+  }
+
+  try {
+    const result = await saveFeedback(
+      {
+        type: subcommand,
+        title,
+        detail,
+        extra,
+      },
+      interaction
+    );
+
+    if (initialReplySent) {
+      await interaction.editReply({
+        content: [
+          "フィードバックありがとうございます！",
+          `ファイル名: \`${result.filename}\``,
+        ].join("\n"),
+      });
+    }
 
     await context.auditLogger.log({
       action: `feedback.${subcommand}`,
@@ -176,15 +233,16 @@ const execute = async (
       subcommand,
     });
 
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({
-        content: "申し訳ありません、保存中にエラーが発生しました。時間をおいて再度お試しください。",
-        ephemeral: true,
-      });
-    } else {
-      await interaction.reply({
-        content: "申し訳ありません、保存中にエラーが発生しました。時間をおいて再度お試しください。",
-        ephemeral: true,
+    try {
+      if (initialReplySent) {
+        await interaction.editReply({ content: errorResponse });
+      }
+    } catch (responseError) {
+      const responseMessage =
+        responseError instanceof Error ? responseError.message : String(responseError);
+      logger.warn("エラー通知の送信に失敗しました", {
+        name: "feedback",
+        message: responseMessage,
       });
     }
 

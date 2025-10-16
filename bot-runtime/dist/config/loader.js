@@ -30,17 +30,25 @@ const parseYaml = (raw) => {
     }
 };
 const validateConfig = (data) => schema_1.ConfigSchema.parse(data);
-const loadConfig = async (customPath) => {
+const loadConfig = async (customPath, options = {}) => {
     const filePath = customPath
         ? path_1.default.resolve(process.cwd(), customPath)
         : DEFAULT_CONFIG_PATH;
+    const emitSuccessLog = options.logSuccess ?? true;
+    const successLogLevel = options.successLogLevel ?? "info";
     try {
         const rawContent = await readFile(filePath);
         const rawConfig = parseYaml(rawContent);
         const config = validateConfig(rawConfig);
-        logger_1.logger.info("設定ファイルを読み込みました", {
-            path: filePath,
-        });
+        if (emitSuccessLog) {
+            const meta = { path: filePath };
+            if (successLogLevel === "debug") {
+                logger_1.logger.debug("設定ファイルを読み込みました", meta);
+            }
+            else {
+                logger_1.logger.info("設定ファイルを読み込みました", meta);
+            }
+        }
         return { ok: true, path: filePath, config };
     }
     catch (error) {

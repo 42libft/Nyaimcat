@@ -55,6 +55,7 @@ const bootstrap = async () => {
   const token = process.env.DISCORD_TOKEN;
   const clientId = process.env.DISCORD_CLIENT_ID;
   const guildId = process.env.DISCORD_GUILD_ID;
+  const disableCommandSync = process.env.DISABLE_COMMAND_SYNC;
 
   if (!token || !clientId) {
     logger.error("DISCORD_TOKEN と DISCORD_CLIENT_ID は必須です。設定を確認してください。");
@@ -62,10 +63,16 @@ const bootstrap = async () => {
     return;
   }
 
+  const syncCommands = !(
+    disableCommandSync &&
+    ["1", "true", "yes", "on"].includes(disableCommandSync.toLowerCase())
+  );
+
   const runtimeOptions: Omit<DiscordClientOptions, "guildId"> = {
     token,
     clientId,
     config: activeConfig,
+    syncCommands,
   };
 
   const discordRuntime = new DiscordRuntime(

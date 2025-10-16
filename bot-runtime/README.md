@@ -14,7 +14,7 @@ npm install
 cp .env.example .env
 ```
 
-`.env`にDiscord Botトークン（`DISCORD_TOKEN`）とアプリケーションクライアントID（`DISCORD_CLIENT_ID`）を設定してください。ギルド限定でSlash Commandを同期したい場合は`DISCORD_GUILD_ID`を指定します。
+`.env`にDiscord Botトークン（`DISCORD_TOKEN`）とアプリケーションクライアントID（`DISCORD_CLIENT_ID`）を設定してください。ギルド限定でSlash Commandを同期したい場合は`DISCORD_GUILD_ID`を指定します。Python製Botとトークンを共有している場合は、`DISABLE_COMMAND_SYNC=1` を指定するとSlash Commandの同期をスキップできます。
 
 設定ファイルは既定で`config/config.yaml`を参照します。異なる場所に置く場合は環境変数`BOT_CONFIG_PATH`を指定してください。ホットリロードの周期は`BOT_CONFIG_POLL_INTERVAL_MS`で調整できます。
 

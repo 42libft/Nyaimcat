@@ -27,6 +27,7 @@ class DiscordRuntime {
         this.clientId = options.clientId;
         this.guildId = options.guildId;
         this.config = options.config;
+        this.syncCommands = options.syncCommands ?? true;
         this.client = new discord_js_1.Client({
             intents: buildIntentList(),
             partials: PARTIALS,
@@ -40,7 +41,12 @@ class DiscordRuntime {
         this.introduceManager = new manager_4.IntroduceManager(this.auditLogger, this.config);
     }
     async start() {
-        await this.registerSlashCommands();
+        if (this.syncCommands) {
+            await this.registerSlashCommands();
+        }
+        else {
+            logger_1.logger.info("Slash Command 同期をスキップします (syncCommands=false)");
+        }
         this.registerEventHandlers();
         await this.client.login(this.token);
         await this.auditLogger.log({

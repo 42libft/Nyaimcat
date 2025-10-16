@@ -12,6 +12,10 @@ export type ConfigLoadFailure = {
     issues?: ZodIssue[];
 };
 export type ConfigLoadResult = ConfigLoadSuccess | ConfigLoadFailure;
-export declare const loadConfig: (customPath?: string) => Promise<ConfigLoadResult>;
+export type LoadConfigOptions = {
+    logSuccess?: boolean;
+    successLogLevel?: "info" | "debug";
+};
+export declare const loadConfig: (customPath?: string, options?: LoadConfigOptions) => Promise<ConfigLoadResult>;
 export declare const requireConfig: (customPath?: string) => Promise<BotConfig>;
 //# sourceMappingURL=loader.d.ts.map

@@ -119,27 +119,21 @@ class VerifyManager {
         }
         const verifyConfig = this.getVerifyConfig();
         if (!verifyConfig) {
-            await interaction.reply({
-                content: "認証設定が見つかりません。運営にお問い合わせください。",
-                ephemeral: true,
-            });
+            await this.replyEphemeral(interaction, "認証設定が見つかりません。運営にお問い合わせください。");
             return;
         }
         if (verifyConfig.mode !== "button") {
-            await interaction.reply({
-                content: "現在は反応式の認証が有効です。",
-                ephemeral: true,
-            });
+            await this.replyEphemeral(interaction, "現在は反応式の認証が有効です。");
             return;
         }
         if (!interaction.guild) {
-            await interaction.reply({
-                content: "ギルド外で実行されたため認証できません。",
-                ephemeral: true,
-            });
+            await this.replyEphemeral(interaction, "ギルド外で実行されたため認証できません。");
             return;
         }
         const member = interaction.member;
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
+        }
         if (!member || !(member instanceof discord_js_1.GuildMember)) {
             const fetched = await interaction.guild.members.fetch(interaction.user.id);
             await this.grantRole(fetched, verifyConfig, interaction);
@@ -266,25 +260,31 @@ class VerifyManager {
             return false;
         }
     }
+    async replyEphemeral(interaction, content) {
+        const payload = { content };
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply(payload);
+            return;
+        }
+        await interaction.reply({
+            ...payload,
+            flags: discord_js_1.MessageFlags.Ephemeral,
+        });
+    }
     async grantRole(member, verifyConfig, interaction) {
         try {
             const applied = await this.applyRole(member, verifyConfig, {
                 reason: "button",
                 executorId: interaction.user.id,
             });
-            await interaction.reply({
-                content: applied
-                    ? "認証が完了しました。ようこそ！"
-                    : "すでに認証済みです。",
-                ephemeral: true,
-            });
+            const content = applied
+                ? "認証が完了しました。ようこそ！"
+                : "すでに認証済みです。";
+            await this.replyEphemeral(interaction, content);
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            await interaction.reply({
-                content: `認証に失敗しました: ${message}`,
-                ephemeral: true,
-            });
+            await this.replyEphemeral(interaction, `認証に失敗しました: ${message}`);
         }
     }
     async applyRole(member, verifyConfig, context) {

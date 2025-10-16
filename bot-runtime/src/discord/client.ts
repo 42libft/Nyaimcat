@@ -32,6 +32,7 @@ export type DiscordClientOptions = {
   clientId: string;
   guildId?: string;
   config: BotConfig;
+  syncCommands?: boolean;
 };
 
 const buildIntentList = () => [
@@ -52,6 +53,7 @@ export class DiscordRuntime {
   private readonly token: string;
   private readonly clientId: string;
   private readonly guildId: string | undefined;
+  private readonly syncCommands: boolean;
   private readonly rest: REST;
   private client: Client;
   private commands: Collection<string, SlashCommandModule>;
@@ -67,6 +69,7 @@ export class DiscordRuntime {
     this.clientId = options.clientId;
     this.guildId = options.guildId;
     this.config = options.config;
+    this.syncCommands = options.syncCommands ?? true;
 
     this.client = new Client({
       intents: buildIntentList(),
@@ -87,7 +90,11 @@ export class DiscordRuntime {
   }
 
   async start() {
-    await this.registerSlashCommands();
+    if (this.syncCommands) {
+      await this.registerSlashCommands();
+    } else {
+      logger.info("Slash Command 同期をスキップします (syncCommands=false)");
+    }
     this.registerEventHandlers();
 
     await this.client.login(this.token);

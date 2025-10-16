@@ -50,6 +50,22 @@ python -m src.esclbot.cli xlsx "https://fightnt.escl.co.jp/scrims/..." --group G
 ```
 （Node.js ランタイムと同一トークンを共有すると Slash Command が上書きされる点にご注意ください。）
 
+### Discord Slash コマンド（応募予約 v2）
+Python Bot 側に ESCL 応募専用コマンドを追加しました。`.env` には少なくとも次の値を設定してください。
+
+- `DISCORD_TOKEN` / `DISCORD_CLIENT_ID`
+- `ESCL_JWT` — FightNT ログイン後に取得した JWT
+- `DEFAULT_TEAM_ID` — teamId の初期値（例: 2966）
+- `TZ=Asia/Tokyo`（任意ですがログが JST で揃います）
+
+コマンド一覧:
+
+- `/set-team team_id:<int>` — コマンド実行者の Discord userId ↔ teamId を `data/team_ids.json` に永続化します。
+- `/list-active` — ESCL の `ListActiveScrim` を呼び出し、近い開催日を scrimId と併せて表示します（エフェメラル）。
+- `/entry event_date:YYYY-MM-DD scrim_id:<int> [team_id:<int>]` — 開催日の前日 0:00(JST) に 0.5 秒間隔×最大 6 回で応募を送信します。進捗はコマンド発行チャンネルのスレッドに通知され、成功・失敗ともに HTTP ステータスとメッセージを表示します。
+
+> **補足:** `team_id` を省略した場合は `/set-team` で登録した値、登録がなければ `DEFAULT_TEAM_ID` を利用します。`team_ids.json` は自動生成され、Bot 再起動後も継続して利用できます。
+
 ## Nyaimlab 管理 API (FastAPI)
 `src/nyaimlab/` には Pages 向けダッシュボードのバックエンドを提供する FastAPI アプリが含まれています。状態はインメモリで管理し、すべてのリクエストに対して監査ログを記録します。
 

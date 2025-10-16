@@ -9,6 +9,7 @@ const verify_1 = require("./verify");
 const version_1 = require("./version");
 const esclCsv_1 = require("./esclCsv");
 const esclXlsx_1 = require("./esclXlsx");
+const feedback_1 = require("./feedback");
 exports.commandModules = [
     version_1.versionCommand,
     esclCsv_1.esclFromParentCsvCommand,
@@ -17,6 +18,7 @@ exports.commandModules = [
     verify_1.verifyCommand,
     roles_1.rolesCommand,
     introduce_1.introduceCommand,
+    feedback_1.feedbackCommand,
 ];
 const buildCommandCollection = () => {
     const collection = new discord_js_1.Collection();

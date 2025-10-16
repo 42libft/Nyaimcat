@@ -23,6 +23,11 @@ export type ConfigLoadResult = ConfigLoadSuccess | ConfigLoadFailure;
 
 const DEFAULT_CONFIG_PATH = path.resolve(process.cwd(), "config", "config.yaml");
 
+export type LoadConfigOptions = {
+  logSuccess?: boolean;
+  successLogLevel?: "info" | "debug";
+};
+
 const readFile = async (filePath: string): Promise<string> => {
   try {
     return await fs.readFile(filePath, "utf-8");
@@ -43,19 +48,29 @@ const parseYaml = (raw: string) => {
 
 const validateConfig = (data: unknown): BotConfig => ConfigSchema.parse(data);
 
-export const loadConfig = async (customPath?: string): Promise<ConfigLoadResult> => {
+export const loadConfig = async (
+  customPath?: string,
+  options: LoadConfigOptions = {}
+): Promise<ConfigLoadResult> => {
   const filePath = customPath
     ? path.resolve(process.cwd(), customPath)
     : DEFAULT_CONFIG_PATH;
+  const emitSuccessLog = options.logSuccess ?? true;
+  const successLogLevel = options.successLogLevel ?? "info";
 
   try {
     const rawContent = await readFile(filePath);
     const rawConfig = parseYaml(rawContent);
     const config = validateConfig(rawConfig);
 
-    logger.info("設定ファイルを読み込みました", {
-      path: filePath,
-    });
+    if (emitSuccessLog) {
+      const meta = { path: filePath };
+      if (successLogLevel === "debug") {
+        logger.debug("設定ファイルを読み込みました", meta);
+      } else {
+        logger.info("設定ファイルを読み込みました", meta);
+      }
+    }
 
     return { ok: true, path: filePath, config } satisfies ConfigLoadSuccess;
   } catch (error) {

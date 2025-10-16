@@ -5,11 +5,13 @@ export type DiscordClientOptions = {
     clientId: string;
     guildId?: string;
     config: BotConfig;
+    syncCommands?: boolean;
 };
 export declare class DiscordRuntime {
     private readonly token;
     private readonly clientId;
     private readonly guildId;
+    private readonly syncCommands;
     private readonly rest;
     private client;
     private commands;

@@ -25,6 +25,7 @@ export declare class VerifyManager {
     private buildMessagePayload;
     private getVerifyConfig;
     private hasRole;
+    private replyEphemeral;
     private grantRole;
     private applyRole;
 }
