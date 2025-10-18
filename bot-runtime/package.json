@@ -7,7 +7,11 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "task-inbox": "ts-node src/cli/taskInbox.ts"
+    "test": "node --test --require ts-node/register \"src/**/*.test.ts\"",
+    "task-inbox": "ts-node src/cli/taskInbox.ts",
+    "codex-runner": "ts-node src/cli/codexRunner.ts",
+    "codex-queue-harness": "ts-node src/cli/codexQueueHarness.ts",
+    "health-history": "ts-node src/cli/healthHistory.ts"
   },
   "keywords": [],
   "author": "",

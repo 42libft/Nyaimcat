@@ -20,12 +20,15 @@ import {
   buildCommandCollection,
   commandModules,
 } from "./commands/index";
-import type { SlashCommandModule } from "./commands/types";
+import { handleWorkStartSelect } from "./commands/work";
+import type { CommandExecuteContext, SlashCommandModule } from "./commands/types";
 import { AuditLogger } from "./auditLogger";
 import { OnboardingManager } from "./onboarding/manager";
 import { VerifyManager } from "./verify/manager";
 import { RolesPanelManager } from "./roles/manager";
 import { IntroduceManager } from "./introduce/manager";
+import { CodexFollowUpManager } from "./codex/followUpManager";
+import { PresenceManager } from "./presenceManager";
 
 export type DiscordClientOptions = {
   token: string;
@@ -63,6 +66,8 @@ export class DiscordRuntime {
   private verifyManager: VerifyManager;
   private rolesManager: RolesPanelManager;
   private introduceManager: IntroduceManager;
+  private codexFollowUpManager: CodexFollowUpManager;
+  private presenceManager: PresenceManager;
 
   constructor(options: DiscordClientOptions) {
     this.token = options.token;
@@ -79,6 +84,7 @@ export class DiscordRuntime {
     this.rest = new REST({ version: "10" }).setToken(this.token);
     this.commands = buildCommandCollection();
     this.auditLogger = new AuditLogger(this.client, this.config);
+    this.codexFollowUpManager = new CodexFollowUpManager(this.auditLogger);
     this.onboarding = new OnboardingManager(this.client, this.auditLogger, this.config);
     this.verifyManager = new VerifyManager(this.client, this.auditLogger, this.config);
     this.rolesManager = new RolesPanelManager(
@@ -87,6 +93,7 @@ export class DiscordRuntime {
       this.config
     );
     this.introduceManager = new IntroduceManager(this.auditLogger, this.config);
+    this.presenceManager = new PresenceManager(this.client);
   }
 
   async start() {
@@ -119,6 +126,7 @@ export class DiscordRuntime {
     this.verifyManager.updateConfig(config);
     this.rolesManager.updateConfig(config);
     this.introduceManager.updateConfig(config);
+    void this.presenceManager.refresh();
 
     logger.debug("DiscordRuntime 設定を更新しました", {
       changedSections: context?.changedSections ?? [],
@@ -144,6 +152,8 @@ export class DiscordRuntime {
       if (!this.client.user) {
         return;
       }
+
+      this.presenceManager.start();
 
       logger.info("Discord クライアントが起動しました", {
         user: this.client.user.tag,
@@ -300,6 +310,10 @@ export class DiscordRuntime {
 
     this.client.on("interactionCreate", async (interaction) => {
       if (interaction.isButton()) {
+        const handled = await this.codexFollowUpManager.handleButton(interaction);
+        if (handled) {
+          return;
+        }
         await this.onboarding.handleInteraction(interaction);
         await this.verifyManager.handleButton(interaction);
         await this.rolesManager.handleButton(interaction);
@@ -307,11 +321,22 @@ export class DiscordRuntime {
       }
 
       if (interaction.isStringSelectMenu()) {
+        const handled = await handleWorkStartSelect(
+          interaction,
+          this.buildCommandContext()
+        );
+        if (handled) {
+          return;
+        }
         await this.rolesManager.handleSelect(interaction);
         return;
       }
 
       if (interaction.isModalSubmit()) {
+        const handled = await this.codexFollowUpManager.handleModalSubmit(interaction);
+        if (handled) {
+          return;
+        }
         await this.introduceManager.handleModalSubmit(interaction);
         return;
       }
@@ -352,6 +377,17 @@ export class DiscordRuntime {
     }
   }
 
+  private buildCommandContext(): CommandExecuteContext {
+    return {
+      config: this.config,
+      client: this.client,
+      auditLogger: this.auditLogger,
+      verifyManager: this.verifyManager,
+      rolesManager: this.rolesManager,
+      introduceManager: this.introduceManager,
+    };
+  }
+
   private async handleChatCommand(interaction: ChatInputCommandInteraction) {
     const command = this.commands.get(interaction.commandName);
 
@@ -367,14 +403,7 @@ export class DiscordRuntime {
     }
 
     try {
-      await command.execute(interaction, {
-        config: this.config,
-        client: this.client,
-        auditLogger: this.auditLogger,
-        verifyManager: this.verifyManager,
-        rolesManager: this.rolesManager,
-        introduceManager: this.introduceManager,
-      });
+      await command.execute(interaction, this.buildCommandContext());
       await this.auditLogger.log({
         action: "command.execute",
         status: "success",

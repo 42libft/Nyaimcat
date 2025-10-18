@@ -1,0 +1,1 @@
+{"version":3,"file":"work.d.ts","sourceRoot":"","sources":["../../../src/discord/commands/work.ts"],"names":[],"mappings":"AAAA,OAAO,EAQL,KAAK,2BAA2B,EACjC,MAAM,YAAY,CAAC;AAGpB,OAAO,KAAK,EAAE,qBAAqB,EAAE,kBAAkB,EAAE,MAAM,SAAS,CAAC;AA8nBzE,eAAO,MAAM,qBAAqB,GAChC,aAAa,2BAA2B,EACxC,SAAS,qBAAqB,KAC7B,OAAO,CAAC,OAAO,CAqFjB,CAAC;AAuPF,eAAO,MAAM,WAAW,EAAE,kBAGzB,CAAC"}

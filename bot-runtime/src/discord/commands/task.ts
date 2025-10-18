@@ -13,11 +13,21 @@ import type { CommandExecuteContext, SlashCommandModule } from "./types";
 import { logger } from "../../utils/logger";
 import { ensureInboxDirectory } from "../../tasks/inbox";
 import { INBOX_DIR } from "../../tasks/paths";
+import { checkCodexCommandAccess } from "../../codex/accessControl";
 
-const MAX_FILENAME_LENGTH = 80;
+export const MAX_FILENAME_LENGTH = 80;
 
-const DEFAULT_ERROR_MESSAGE =
-  "申し訳ありません、タスクの保存中にエラーが発生しました。時間をおいて再度お試しください。";
+const TASK_ERROR_GUIDANCE_LINES = [
+  "",
+  "⚙️ トラブルシュート:",
+  "- `docs/codex/operations.md` の「Slash コマンドのエラーメッセージとトラブルシュート」を参照し、監査ログの記録を確認してください。",
+  "- `npm run task-inbox validate` で Inbox の整合性を確認し、必要に応じてタスクを手動で再登録してください。",
+];
+
+const DEFAULT_ERROR_MESSAGE = [
+  "申し訳ありません、タスクの保存中にエラーが発生しました。時間をおいて再度お試しください。",
+  ...TASK_ERROR_GUIDANCE_LINES,
+].join("\n");
 const INITIAL_REPLY_MESSAGE =
   "Codex 作業依頼を受け付けました。ファイルへの保存処理を開始します…";
 
@@ -173,6 +183,26 @@ const execute = async (
     await interaction.reply({
       content: "未対応のサブコマンドです。", 
       flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  const access = checkCodexCommandAccess(interaction);
+  if (!access.ok) {
+    await interaction.reply({
+      content: access.message,
+      flags: MessageFlags.Ephemeral,
+    });
+
+    await context.auditLogger.log({
+      action: "task.create",
+      status: "failure",
+      description: "Codex 作業依頼コマンドの権限不足により処理を中断しました",
+      details: {
+        userId: interaction.user.id,
+        channelId: interaction.channel?.id ?? null,
+        reason: access.reason,
+      },
     });
     return;
   }

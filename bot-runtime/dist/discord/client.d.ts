@@ -21,6 +21,8 @@ export declare class DiscordRuntime {
     private verifyManager;
     private rolesManager;
     private introduceManager;
+    private codexFollowUpManager;
+    private presenceManager;
     constructor(options: DiscordClientOptions);
     start(): Promise<void>;
     applyConfigUpdate(config: BotConfig, context?: {
@@ -30,6 +32,7 @@ export declare class DiscordRuntime {
     getClient(): Client<boolean>;
     private registerEventHandlers;
     private registerSlashCommands;
+    private buildCommandContext;
     private handleChatCommand;
 }
 //# sourceMappingURL=client.d.ts.map

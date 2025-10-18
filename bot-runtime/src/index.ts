@@ -3,8 +3,19 @@ import dotenv from "dotenv";
 import { ConfigWatcher, loadConfig } from "./config";
 import { logger } from "./utils/logger";
 import { DiscordRuntime, type DiscordClientOptions } from "./discord/client";
+import {
+  evaluateAuditLogChannel,
+  evaluateCodexNotificationSettings,
+  evaluateDiscordActionsHealth,
+} from "./health/checks";
+import { initializeHealthAlerts } from "./health/alerts";
 
 dotenv.config();
+
+logger.info("Codex CLI 実行設定を読み込みました", {
+  sandboxArgs: process.env.CODEX_CLI_ARGS ?? "(未設定)",
+  blockedFlags: process.env.CODEX_CLI_BLOCKED_FLAGS ?? "(未設定)",
+});
 
 const bootstrap = async () => {
   logger.info("Bot ランタイムの起動を開始します");
@@ -29,6 +40,12 @@ const bootstrap = async () => {
     features: activeConfig.features,
   });
 
+  initializeHealthAlerts();
+
+  evaluateAuditLogChannel(activeConfig);
+  evaluateCodexNotificationSettings();
+  evaluateDiscordActionsHealth();
+
   const intervalMs = Number(process.env.BOT_CONFIG_POLL_INTERVAL_MS ?? "60000");
 
   const watcher = new ConfigWatcher(activeConfig, {
@@ -38,6 +55,9 @@ const bootstrap = async () => {
 
   watcher.onUpdate(({ config, changedSections, hash }) => {
     activeConfig = config;
+    evaluateAuditLogChannel(config);
+    evaluateCodexNotificationSettings();
+    evaluateDiscordActionsHealth();
     logger.info("設定ホットリロードを適用しました", {
       changedSections,
       hash,

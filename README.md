@@ -3,14 +3,14 @@
 ## 概要
 - ESCL スクリムの試合結果を直接 ESCL 公開 API から収集し、CSV / Excel にまとめる Discord Bot。
 - Nyaimlab 向け運用ダッシュボードのバックエンド (FastAPI) とフロントエンド (Vite + React)。
-- Node.js 製の Bot ランタイム（ホットリロード対応）を同梱し、既存の YAML 設定と監査ログ運用を再現。
+- Node.js 製の Bot ランタイム（ホットリロード対応）に Codex CLI 連携と Slash コマンド群（`/task` `/work` `/status` `/help` など）を収録。
 
 ## リポジトリ構成
 - `src/esclbot/`: Python 製 Discord Bot 本体と ESCL API 連携ロジック。
 - `src/nyaimlab/`: Nyaimlab 管理 API の FastAPI 実装。
 - `dashboard/`: Vite + React で実装した管理ダッシュボード。
 - `bot-runtime/`: discord.js v14 + TypeScript の Bot ランタイム。
-- `docs/`: 設計資料や参考メモ。`docs/NyaimlabBotDesign.md` 参照。
+- `docs/`: 設計資料や運用ドキュメント。Codex 連携は `docs/codex_agent_tasks.md` / `docs/codex_agent_plan.md`、全体設計は `docs/NyaimlabBotDesign.md` を参照。
 - `tests/`: Python 側のユニットテスト。
 
 ## Python 環境セットアップ
@@ -124,14 +124,34 @@ cp .env.example .env
 - `npm run build`: TypeScript を `dist/` にビルド
 - `npm start`: ビルド済み `dist/index.js` を実行
 
-### 提供コマンド
-- `/version` — Python ESCL Bot と Node ランタイムのバージョンを表示（エフェメラル）
-- `/escl_from_parent_csv parent_url:<URL> group:<任意>` — ESCL グループから 6 試合分の CSV を生成
-- `/escl_from_parent_xlsx parent_url:<URL> group:<任意>` — 同データの Excel（GAME1..6 / ALL_GAMES / TEAM_TOTALS）を生成
-- `/ping` — 応答遅延を確認（エフェメラル）
-- `/verify post [channel:<チャンネル>]` — 認証パネルを投稿／更新
-- `/roles post [channel:<チャンネル>]` — ロール配布パネルを投稿／更新
-- `/introduce` — 自己紹介モーダルを開き、設定チャンネルへ投稿
+### Slash コマンドガイド
+
+#### Codex 自動化
+- `/task create` — Codex 作業依頼を Markdown（`tasks/inbox/`）へ保存します。件名・概要・詳細・優先度を指定可能。
+- `/work start [filename] [latest] [notify_channel] [skip_notify] [update_docs]` — タスクファイルを実行キューへ登録し、Codex CLI を起動します。
+- `/work status [queue_id]` — 実行キュー全体または指定 ID の詳細を表示します。
+- `/work cancel queue_id:<ID>` — 実行中／待機中のジョブをキャンセルします。
+- `/status` — Bot 稼働状況と Codex 連携ヘルスをまとめて確認します。
+
+#### ESCL データ取得
+- `/escl_from_parent_csv parent_url:<URL> [group]` — ESCL グループ URL から 6 試合分の CSV（ALL_GAMES 相当）を生成します。
+- `/escl_from_parent_xlsx parent_url:<URL> [group]` — 同データを Excel（GAME1..6 / ALL_GAMES / TEAM_TOTALS）として出力します。
+- `/version` — Python ESCL コレクタと Node ランタイムのバージョンを表示します。
+
+#### オンボーディング／運用支援
+- `/verify post [channel]` — ダッシュボード設定を基に認証パネルを投稿／更新します。
+- `/roles post [channel]` — ロール配布パネルを投稿／更新します（ManageRoles 権限またはスタッフロールが必要）。
+- `/introduce` — 自己紹介モーダルを開き、設定済みチャンネルに投稿します。
+- `/feedback bug|idea` — 不具合報告や改善アイデアを Markdown として保存し、監査ログへ記録します。
+
+#### ユーティリティ
+- `/ping` — 応答遅延を確認します。
+- `/help [category:<カテゴリ>] [command:<コマンド>]` — Bot の主要コマンドとサーバー運用ガイドを表示します。カテゴリ別・コマンド別に詳細を切り替え可能です。
+
+### Codex 連携ドキュメント
+- `docs/codex_agent_tasks.md` — Slash コマンドと Codex 自動化機能のタスクリスト。利用手順や実装済み機能の概要を確認できます。
+- `docs/codex_agent_plan.md` — Codex 連携機能の実装計画と進捗メモ。設計意図や運用判断を参照する際に利用します。
+- `docs/codex/operations.md` — Codex CLI 実行時のガードレールや承認フローなど、運用ポリシーをまとめたドキュメント。
 
 ### Python / Node 両方の Bot を同時に起動する
 ルート直下の `scripts/run_bots.sh` は、Slash Command を統合した Node.js ランタイムを起動しつつ、必要な Python 依存関係（ESCL CLI）を整備します。初回は `.venv` の作成や npm 依存インストール、`.env` テンプレートのコピーを自動で行います。

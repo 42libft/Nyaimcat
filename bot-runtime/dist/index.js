@@ -7,7 +7,13 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const config_1 = require("./config");
 const logger_1 = require("./utils/logger");
 const client_1 = require("./discord/client");
+const checks_1 = require("./health/checks");
+const alerts_1 = require("./health/alerts");
 dotenv_1.default.config();
+logger_1.logger.info("Codex CLI 実行設定を読み込みました", {
+    sandboxArgs: process.env.CODEX_CLI_ARGS ?? "(未設定)",
+    blockedFlags: process.env.CODEX_CLI_BLOCKED_FLAGS ?? "(未設定)",
+});
 const bootstrap = async () => {
     logger_1.logger.info("Bot ランタイムの起動を開始します");
     const configPath = process.env.BOT_CONFIG_PATH;
@@ -26,6 +32,10 @@ const bootstrap = async () => {
         channels: activeConfig.channels,
         features: activeConfig.features,
     });
+    (0, alerts_1.initializeHealthAlerts)();
+    (0, checks_1.evaluateAuditLogChannel)(activeConfig);
+    (0, checks_1.evaluateCodexNotificationSettings)();
+    (0, checks_1.evaluateDiscordActionsHealth)();
     const intervalMs = Number(process.env.BOT_CONFIG_POLL_INTERVAL_MS ?? "60000");
     const watcher = new config_1.ConfigWatcher(activeConfig, {
         path: configResult.path,
@@ -33,6 +43,9 @@ const bootstrap = async () => {
     });
     watcher.onUpdate(({ config, changedSections, hash }) => {
         activeConfig = config;
+        (0, checks_1.evaluateAuditLogChannel)(config);
+        (0, checks_1.evaluateCodexNotificationSettings)();
+        (0, checks_1.evaluateDiscordActionsHealth)();
         logger_1.logger.info("設定ホットリロードを適用しました", {
             changedSections,
             hash,

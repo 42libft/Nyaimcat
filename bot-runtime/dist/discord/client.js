@@ -4,11 +4,14 @@ exports.DiscordRuntime = void 0;
 const discord_js_1 = require("discord.js");
 const logger_1 = require("../utils/logger");
 const index_1 = require("./commands/index");
+const work_1 = require("./commands/work");
 const auditLogger_1 = require("./auditLogger");
 const manager_1 = require("./onboarding/manager");
 const manager_2 = require("./verify/manager");
 const manager_3 = require("./roles/manager");
 const manager_4 = require("./introduce/manager");
+const followUpManager_1 = require("./codex/followUpManager");
+const presenceManager_1 = require("./presenceManager");
 const buildIntentList = () => [
     discord_js_1.GatewayIntentBits.Guilds,
     discord_js_1.GatewayIntentBits.GuildMembers,
@@ -35,10 +38,12 @@ class DiscordRuntime {
         this.rest = new discord_js_1.REST({ version: "10" }).setToken(this.token);
         this.commands = (0, index_1.buildCommandCollection)();
         this.auditLogger = new auditLogger_1.AuditLogger(this.client, this.config);
+        this.codexFollowUpManager = new followUpManager_1.CodexFollowUpManager(this.auditLogger);
         this.onboarding = new manager_1.OnboardingManager(this.client, this.auditLogger, this.config);
         this.verifyManager = new manager_2.VerifyManager(this.client, this.auditLogger, this.config);
         this.rolesManager = new manager_3.RolesPanelManager(this.client, this.auditLogger, this.config);
         this.introduceManager = new manager_4.IntroduceManager(this.auditLogger, this.config);
+        this.presenceManager = new presenceManager_1.PresenceManager(this.client);
     }
     async start() {
         if (this.syncCommands) {
@@ -66,6 +71,7 @@ class DiscordRuntime {
         this.verifyManager.updateConfig(config);
         this.rolesManager.updateConfig(config);
         this.introduceManager.updateConfig(config);
+        void this.presenceManager.refresh();
         logger_1.logger.debug("DiscordRuntime 設定を更新しました", {
             changedSections: context?.changedSections ?? [],
             hash: context?.hash,
@@ -87,6 +93,7 @@ class DiscordRuntime {
             if (!this.client.user) {
                 return;
             }
+            this.presenceManager.start();
             logger_1.logger.info("Discord クライアントが起動しました", {
                 user: this.client.user.tag,
                 id: this.client.user.id,
@@ -207,16 +214,28 @@ class DiscordRuntime {
         });
         this.client.on("interactionCreate", async (interaction) => {
             if (interaction.isButton()) {
+                const handled = await this.codexFollowUpManager.handleButton(interaction);
+                if (handled) {
+                    return;
+                }
                 await this.onboarding.handleInteraction(interaction);
                 await this.verifyManager.handleButton(interaction);
                 await this.rolesManager.handleButton(interaction);
                 return;
             }
             if (interaction.isStringSelectMenu()) {
+                const handled = await (0, work_1.handleWorkStartSelect)(interaction, this.buildCommandContext());
+                if (handled) {
+                    return;
+                }
                 await this.rolesManager.handleSelect(interaction);
                 return;
             }
             if (interaction.isModalSubmit()) {
+                const handled = await this.codexFollowUpManager.handleModalSubmit(interaction);
+                if (handled) {
+                    return;
+                }
                 await this.introduceManager.handleModalSubmit(interaction);
                 return;
             }
@@ -251,6 +270,16 @@ class DiscordRuntime {
             throw error;
         }
     }
+    buildCommandContext() {
+        return {
+            config: this.config,
+            client: this.client,
+            auditLogger: this.auditLogger,
+            verifyManager: this.verifyManager,
+            rolesManager: this.rolesManager,
+            introduceManager: this.introduceManager,
+        };
+    }
     async handleChatCommand(interaction) {
         const command = this.commands.get(interaction.commandName);
         if (!command) {
@@ -264,14 +293,7 @@ class DiscordRuntime {
             return;
         }
         try {
-            await command.execute(interaction, {
-                config: this.config,
-                client: this.client,
-                auditLogger: this.auditLogger,
-                verifyManager: this.verifyManager,
-                rolesManager: this.rolesManager,
-                introduceManager: this.introduceManager,
-            });
+            await command.execute(interaction, this.buildCommandContext());
             await this.auditLogger.log({
                 action: "command.execute",
                 status: "success",

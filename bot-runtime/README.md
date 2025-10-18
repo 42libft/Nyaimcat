@@ -23,6 +23,12 @@ cp .env.example .env
 - `npm run build`: TypeScriptをコンパイルし`dist/`配下に出力します。
 - `npm start`: ビルド済みの`dist/index.js`を実行します。
 
+## Codex 運用ツール
+- `npm run task-inbox -- <コマンド>`: Codex タスク Inbox の一覧表示・検査・編集・削除を行います。
+- `npm run codex-runner`: 保存されたタスクを選択し Codex CLI を起動します。
+- `npm run codex-queue-harness`: Codex 実行キューのリトライやタイムアウト挙動を再現します。
+- `npm run health-history -- <summary|detail|timeline>`: `tasks/runs/health/` に保存されたヘルスチェック履歴を集計し、概要やタイムラインを確認できます。
+
 ## 監査ログ
 `config.yaml`の`channels.auditLog`に指定したチャンネルへ、JSON形式で監査ログを送信します。Slash Command実行結果、メンバー参加、リアクション追加、設定更新イベントが記録されます。
 

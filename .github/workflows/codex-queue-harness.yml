@@ -1,0 +1,40 @@
+name: Codex Queue Harness
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "bot-runtime/**"
+      - ".github/workflows/codex-queue-harness.yml"
+      - "docs/codex/**"
+  pull_request:
+    paths:
+      - "bot-runtime/**"
+      - ".github/workflows/codex-queue-harness.yml"
+      - "docs/codex/**"
+  schedule:
+    - cron: "0 3 * * *"
+
+jobs:
+  run-harness:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bot-runtime
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: bot-runtime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Codex queue harness
+        run: npm run codex-queue-harness
