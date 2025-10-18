@@ -1,9 +1,11 @@
 # show_meta.py  — REQ_BODY を波括弧の対応で安全に抜き出す版
-from pathlib import Path
 import json
 import re
+from pathlib import Path
 
-DUMP = Path("escl_api_dump")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DUMP = REPO_ROOT / "data" / "escl" / "raw"
+
 
 def extract_json_after_req_body(text: str):
     """'REQ_BODY:' の直後に現れる JSON ブロックを {…} の括弧対応で抽出する。"""
@@ -60,4 +62,3 @@ print("=== GetGames REQ_BODY ===")
 latest_body("*PublicGameService_GetGames*.meta.txt")
 print("\n=== GetBucket REQ_BODY ===")
 latest_body("*PublicBucketService_GetBucket*.meta.txt")
-

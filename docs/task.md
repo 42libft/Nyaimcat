@@ -1,5 +1,60 @@
 # タスクリスト
 
+## ESCL スクリム自動エントリー Bot v2
+
+### ゴール / Definition of Done
+- `/set-team` でユーザーごとの `teamId` を永続化し、`/entry` で省略時に自動解決できる。
+- `/entry` から ESCL API `CreateApplication` を **前日 0:00 (JST)** で送信でき、結果を Discord へ通知する。
+- `ListActiveScrim` などの補助 API を叩き、`/list-active` で最新スクリム情報を提示できる。
+- JWT・teamId 等の機密は `.env`・ローカルファイルに限定して取り扱い、ログへ出力しない。
+
+### 詳細要件メモ
+- ESCL API エンドポイント
+  - `CreateApplication`: `POST /user.v1.UserApplicationService/CreateApplication`
+  - `GetApplications`: `POST /public.v1.PublicApplicationService/GetApplications`
+  - `ListActiveScrim`: `POST /public.v1.PublicScrimService/ListActiveScrim`
+- 認証ヘッダー: `Authorization: Bearer <JWT>` ほか `Origin` / `Referer` / `connect-protocol-version: 1` を必須とする。
+- 応募スケジュールは **開催日の前日 0:00 JST** を基準とし、タイムゾーンは `Asia/Tokyo` で固定。
+
+### 実装状況
+- [x] Python Bot に `/set-team` `/list-active` `/entry` と応募スケジューラを実装済み（現状は 0.5 秒間隔で最大 6 回リトライ。進捗用スレッド生成、teamId 永続化、ESCL API クライアント、ユニットテスト `tests/test_entry_scheduler.py` 付き）。
+- [ ] Node.js ランタイムへ Slash コマンドを移植し、既存機能（CSV/XLSX, verify, introduce など）と共存させる。
+- [ ] 応募ジョブを永続化し、Bot 再起動後も予約を復元できるようにする（軽量なファイル永続化を想定。性能への影響も合わせて検証）。
+- [ ] Node 側で安定稼働を確認後、Python 側の `/entry` 系 Slash コマンドを無効化または削除して運用を一本化する。
+
+### 追加要望（2025-10-18）
+- [ ] `/entry` に任意の時刻を指定できるオプション（例: `dispatch_at=HH:MM`）を追加し、未指定時は従来どおり前日 0:00 JST。
+- [ ] 応募を即時 1 回だけ送信する Slash コマンド（仮: `/entry-now`）を追加する。
+- [ ] リトライ回数を **3 回** へ調整し、429 などの待機ロジックも新設定に合わせる。
+- [ ] 上記変更を Node.js ランタイム移植計画へ反映し、移植完了後も同じ挙動を保証する。
+
+### Exec Plan: ESCL スクリム自動エントリー Bot v2
+
+#### 全体像
+Python 版で成熟している応募フローに「任意時刻オプション」「即時実行コマンド」「リトライ最大 3 回」を追加し挙動を確定させたうえで、Node.js ランタイムへ移植して Slash コマンドを一本化する。再起動後も予約が維持されるよう軽量な永続化層を組み込み、更新点を README や運用手順に反映する。
+
+#### 進捗状況
+- [x] Python 実装と既存ユニットテストの現状確認
+- [ ] 任意時刻オプション／即時応募コマンド／リトライ 3 回を Python 版へ実装しテストを更新
+- [ ] Node.js への機能移植と Slash コマンド登録・権限確認
+- [ ] 応募ジョブ永続化方式（ファイル／SQLite 等）の検証と導入
+- [ ] README・運用ドキュメントの更新とリリース手順整備
+
+#### 発見と驚き
+- Python 版ではスケジューラ・進捗スレッド通知が実装済みだが、Node.js 側には該当コマンドが未登録で UI から利用できない。
+- 応募ジョブはメモリ保持のみで、再起動すると予約が失われることが分かった。
+
+#### 決定ログ
+- 2025-10-18: リトライ最大回数を 3 回へ縮小し、インターバル 0.5 秒は維持する方針を決定。
+- 2025-10-18: Node.js へ移植後は Python 側の同名 Slash コマンドを無効化し運用を一本化する。
+
+#### To-Do
+1. [ ] Python 版の機能拡張とテスト更新
+2. [ ] Node.js 版コマンド実装・通知フローの調整
+3. [ ] ジョブ永続化レイヤーの設計・データ復元テスト
+4. [ ] README／運用ドキュメント・環境変数一覧の更新
+5. [ ] Python コマンド廃止（権限・デプロイ手順含む）
+
 ## Python ESCL コレクタ
 - [x] `/escl_from_parent_csv`コマンド実装（6試合分の生データ出力）
 - [x] `/escl_from_parent_xlsx`コマンド実装（ALL_GAMES／TEAM_TOTALS集計付き）

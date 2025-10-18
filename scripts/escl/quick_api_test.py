@@ -1,6 +1,13 @@
 # quick_api_test.py
-from src.esclbot.api_scraper import parse_scrim_group_from_url, get_group_bucket, collect_csv_from_parent_url
-import pandas as pd
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.esclbot.api_scraper import parse_scrim_group_from_url, get_group_bucket, collect_csv_from_parent_url  # noqa: E402
+import pandas as pd  # noqa: E402
 
 PARENT = "https://fightnt.escl.co.jp/scrims/36db0e63-5188-4ab7-b7ce-5fe1a9fb58d4/77cc0dae-6970-444c-ab30-3905e690e57d"
 
@@ -22,4 +29,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -4,6 +4,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 import pandas as pd
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DUMP_DIR = REPO_ROOT / "data" / "escl" / "raw"
+DEFAULT_EXPORT_DIR = REPO_ROOT / "data" / "escl" / "exports"
+DEFAULT_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
 REQUIRED_HEADERS = [
     "team_name","team_num","player_name","character","placement","kills","assists",
     "damage","shots","hits","accuracy","headshots","headshots_accuracy","survival_time"
@@ -157,8 +162,8 @@ def extract_table_like_from_inner(inner: Any) -> Optional[pd.DataFrame]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dump-dir", default="./escl_api_dump")
-    ap.add_argument("--out", default="ESCL_from_dump.csv")
+    ap.add_argument("--dump-dir", default=str(DEFAULT_DUMP_DIR))
+    ap.add_argument("--out", default=str(DEFAULT_EXPORT_DIR / "ESCL_from_dump.csv"))
     ap.add_argument("--group", default="")
     ap.add_argument("--scrim-id", default="")
     args = ap.parse_args()
@@ -205,7 +210,7 @@ def main():
 
     if not all_frames:
         print("[NG] どのファイルからもデータを抽出できませんでした。")
-        print("     ./escl_api_dump の JSON を1つ貼ってくれれば、キーを見て最短でマッピング書きます。")
+        print("     data/escl/raw の JSON を1つ貼ってくれれば、キーを見て最短でマッピング書きます。")
         return
 
     out_df = pd.concat(all_frames, ignore_index=True)
@@ -238,4 +243,3 @@ def tsv_to_df(text: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
     main()
-

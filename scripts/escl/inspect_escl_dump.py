@@ -1,8 +1,9 @@
 # inspect_escl_dump.py
-import json, os, re
+import json, re
 from pathlib import Path
 
-DUMP_DIR = Path("./escl_api_dump")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DUMP_DIR = REPO_ROOT / "data" / "escl" / "raw"
 
 def brief(v, depth=0, max_items=5):
     pad = "  " * depth
@@ -25,7 +26,8 @@ def brief(v, depth=0, max_items=5):
 def main():
     files = sorted(DUMP_DIR.glob("*.json"))
     if not files:
-        print("no files in ./escl_api_dump"); return
+        print(f"no files in {DUMP_DIR}")
+        return
 
     for fp in files:
         raw = fp.read_bytes()
@@ -54,4 +56,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -1,22 +1,26 @@
 # parse_escl_dump.py
 """
-./escl_api_dump/ に保存された JSON（GetGames / GetBucket など）を読み、
+data/escl/raw/ に保存された JSON（GetGames / GetBucket など）を読み、
 6試合分の「詳細な試合結果テキスト」またはプレイヤー明細からCSVを作るサンプル。
 
 使い方:
-  python parse_escl_dump.py --dump-dir ./escl_api_dump --out ESCL_dump.csv --group G5 --scrim-id 36db0e63-...
+  python parse_escl_dump.py --dump-dir data/escl/raw --out data/escl/exports/ESCL_dump.csv --group G5 --scrim-id 36db0e63-...
 
 最初は --dump-dir だけでOK。group, scrim-id は任意。
 """
 
 import argparse
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DUMP_DIR = REPO_ROOT / "data" / "escl" / "raw"
+DEFAULT_EXPORT_DIR = REPO_ROOT / "data" / "escl" / "exports"
+DEFAULT_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 既存のparserに近い列（テキスト貼付の1行目のヘッダ）
 REQUIRED_HEADERS = [
@@ -118,8 +122,8 @@ def guess_game_no_from_path(path: str) -> Optional[int]:
 # ---------- メイン ----------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dump-dir", default="./escl_api_dump")
-    ap.add_argument("--out", default="ESCL_dump.csv")
+    ap.add_argument("--dump-dir", default=str(DEFAULT_DUMP_DIR))
+    ap.add_argument("--out", default=str(DEFAULT_EXPORT_DIR / "ESCL_dump.csv"))
     ap.add_argument("--group", default="")
     ap.add_argument("--scrim-id", default="")
     args = ap.parse_args()
@@ -215,4 +219,3 @@ def _tsv_like_to_df(text: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
     main()
-

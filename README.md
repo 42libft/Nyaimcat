@@ -11,6 +11,8 @@
 - `dashboard/`: Vite + React で実装した管理ダッシュボード。
 - `bot-runtime/`: discord.js v14 + TypeScript の Bot ランタイム。
 - `docs/`: 設計資料や運用ドキュメント。Codex 連携は `docs/codex_agent_tasks.md` / `docs/codex_agent_plan.md`、全体設計は `docs/NyaimlabBotDesign.md` を参照。
+- `scripts/escl/`: ESCL API ダンプ取得・解析用のスタンドアロン Python ツール群。
+- `data/escl/`: 収集した ESCL API ダンプ（`raw/`）、スクリーンショット（`screenshots/`）、生成物（`exports/`）の保管場所。
 - `tests/`: Python 側のユニットテスト。
 
 ## Python 環境セットアップ

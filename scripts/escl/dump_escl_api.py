@@ -1,15 +1,19 @@
 # dump_escl_api.py  — リクエスト/レスポンスの両方を保存する版
+from pathlib import Path
 from playwright.sync_api import sync_playwright
-import os, re, sys, json, time
+import re, sys, json, time
 from urllib.parse import urlparse
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_OUTDIR = REPO_ROOT / "data" / "escl" / "raw"
+DEFAULT_OUTDIR.mkdir(parents=True, exist_ok=True)
 
 GROUP_URL = sys.argv[1] if len(sys.argv) > 1 else ""
 if not GROUP_URL:
     print("Usage: python dump_escl_api.py <GROUP_PAGE_URL>")
     sys.exit(1)
 
-OUTDIR = "./escl_api_dump"
-os.makedirs(OUTDIR, exist_ok=True)
+OUTDIR = DEFAULT_OUTDIR
 
 def is_json_response(resp):
     try:
@@ -40,13 +44,13 @@ with sync_playwright() as p:
         ts = time.strftime("%Y%m%d-%H%M%S")
         parsed = urlparse(url)
         base = safe_filename(parsed.netloc + parsed.path)
-        json_path = os.path.join(OUTDIR, f"{ts}_{base}.json")
-        meta_path = os.path.join(OUTDIR, f"{ts}_{base}.meta.txt")
+        json_path = OUTDIR / f"{ts}_{base}.json"
+        meta_path = OUTDIR / f"{ts}_{base}.meta.txt"
 
         # メタ（リクエスト/レスポンス）も保存
         try:
             req = resp.request
-            with open(meta_path, "w", encoding="utf-8") as mf:
+            with meta_path.open("w", encoding="utf-8") as mf:
                 mf.write(f"URL: {url}\nMETHOD: {req.method}\nSTATUS: {resp.status}\n")
                 mf.write("REQ_HEADERS:\n")
                 for k,v in (req.headers or {}).items():
@@ -74,14 +78,14 @@ with sync_playwright() as p:
             if not body_bytes:
                 return
             if is_json_response(resp):
-                with open(json_path, "wb") as f:
+                with json_path.open("wb") as f:
                     f.write(body_bytes)
                 print(f"[DUMP] {url} -> {json_path}")
             else:
                 # text/plain だが実体がJSONのケースもある
                 txt = body_bytes.decode("utf-8", errors="ignore")
                 if "{" in txt or "[" in txt:
-                    with open(json_path, "w", encoding="utf-8") as f:
+                    with json_path.open("w", encoding="utf-8") as f:
                         f.write(txt)
                     print(f"[DUMP as text] {url} -> {json_path}")
         except Exception:
@@ -117,4 +121,3 @@ with sync_playwright() as p:
     browser.close()
 
 print("\nDumped files in:", OUTDIR)
-
