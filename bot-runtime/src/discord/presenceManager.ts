@@ -1,15 +1,22 @@
-import type { Client, PresenceData } from "discord.js";
+import { ActivityType, type Client, type PresenceData } from "discord.js";
 
+import { collectHealthIssueSummary } from "../health/summary";
+import { healthRegistry } from "../health/registry";
 import { logger } from "../utils/logger";
 
-type PresenceBuilder = () => PresenceData | null | undefined;
+const MAX_STATE_LENGTH = 80;
+
+const truncate = (value: string, limit: number) =>
+  value.length > limit ? `${value.slice(0, limit - 1)}…` : value;
+
+const stripPrefix = (line: string) => line.replace(/^[🛑⚠️]\s+/, "").trim();
+
+const stripDetectedAt = (line: string) =>
+  line.replace(/\s*\(検知:[^)]+\)\s*$/, "").trim();
 
 export class PresenceManager {
+  private unsubscribe: (() => void) | null = null;
   private started = false;
-  private presenceBuilder: PresenceBuilder | undefined = () => ({
-    status: "online",
-    activities: [],
-  });
 
   constructor(private readonly client: Client) {}
 
@@ -17,6 +24,11 @@ export class PresenceManager {
     if (this.started) {
       return;
     }
+
+    this.unsubscribe = healthRegistry.subscribe({
+      onReport: () => this.handleHealthChange(),
+      onResolve: () => this.handleHealthChange(),
+    });
 
     this.started = true;
     void this.refresh();
@@ -27,6 +39,8 @@ export class PresenceManager {
       return;
     }
 
+    this.unsubscribe?.();
+    this.unsubscribe = null;
     this.started = false;
   }
 
@@ -35,11 +49,7 @@ export class PresenceManager {
       return;
     }
 
-    const presence = this.presenceBuilder?.();
-
-    if (!presence) {
-      return;
-    }
+    const presence = this.buildPresence();
 
     try {
       await this.client.user.setPresence(presence);
@@ -57,12 +67,48 @@ export class PresenceManager {
     }
   }
 
-  // 外部からプレゼンス構築ロジックを差し替えられるようにしておく。
-  setPresenceBuilder(builder?: PresenceBuilder) {
-    this.presenceBuilder = builder;
+  private handleHealthChange() {
+    void this.refresh();
+  }
 
-    if (this.started) {
-      void this.refresh();
+  private buildPresence(): PresenceData {
+    const issues = healthRegistry.list();
+
+    if (issues.length === 0) {
+      return {
+        status: "online",
+        activities: [
+          {
+            type: ActivityType.Custom,
+            name: "Custom Status",
+            state: "🟢 利用可能",
+          },
+        ],
+      };
     }
+
+    const hasError = issues.some((issue) => issue.level === "error");
+    const prefix = hasError ? "🛑 障害対応中" : "⚠️ 警告中";
+    const summary = collectHealthIssueSummary(1);
+    const topLine = summary.lines[0]
+      ? stripDetectedAt(stripPrefix(summary.lines[0]))
+      : "";
+    const countSuffix = summary.total > 1 ? ` (+${summary.total - 1})` : "";
+    const stateBase =
+      topLine.length > 0
+        ? `${prefix} | ${topLine}${countSuffix}`
+        : `${prefix}${countSuffix}`;
+    const state = truncate(stateBase, MAX_STATE_LENGTH);
+
+    return {
+      status: hasError ? "dnd" : "idle",
+      activities: [
+        {
+          type: ActivityType.Custom,
+          name: "Custom Status",
+          state,
+        },
+      ],
+    };
   }
 }

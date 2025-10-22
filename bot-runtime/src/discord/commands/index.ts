@@ -13,12 +13,22 @@ import { feedbackCommand } from "./feedback";
 import { taskCommand } from "./task";
 import { workCommand } from "./work";
 import { statusCommand } from "./status";
+import { setTeamCommand } from "./setTeam";
+import { listActiveCommand } from "./listActive";
+import { entryCommand } from "./entry";
+import { entryNowCommand } from "./entryNow";
+import { esclAccountCommand } from "./esclAccount";
 
 export const commandModules: SlashCommandModule[] = [
   helpCommand,
   versionCommand,
   esclFromParentCsvCommand,
   esclFromParentXlsxCommand,
+  setTeamCommand,
+  esclAccountCommand,
+  listActiveCommand,
+  entryCommand,
+  entryNowCommand,
   pingCommand,
   verifyCommand,
   rolesCommand,

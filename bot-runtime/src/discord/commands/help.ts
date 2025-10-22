@@ -35,6 +35,8 @@ const helpCategoryConfigs = [
     lines: [
       "- `/escl_from_parent_csv` と `/escl_from_parent_xlsx` は ESCL グループページの URL から 6 試合分のデータを直接取得します。",
       "- 生成されたファイルは Slash Command の返信としてアップロードされ、ALL_GAMES や TEAM_TOTALS を含みます。",
+      "- `/escl account register|list|remove|set-default` で JWT と teamId を安全に管理し、ESCL 応募コマンドからアカウントを切り替えられます。",
+      "- `/set-team` `/list-active` `/entry` `/entry-now` で ESCL 応募の登録や即時送信を行えます。予約は前日0:00(JST)が既定で最大3回リトライします。",
       "- `/version` で Python コレクタと Node ランタイムのバージョンを確認し、依存関係の更新判断に活用してください。",
     ],
   },
@@ -169,6 +171,69 @@ const helpCommandConfigs = [
     notes: [
       "Excel 版は命中率やヘッドショット率を再計算し、集計シートを含みます。",
       "CSV 同様にダウンロード用ファイルが返信されます。",
+    ],
+  },
+  {
+    key: "set-team",
+    choiceName: "/set-team",
+    title: "**/set-team**",
+    summary: "ESCL の teamId を登録します。",
+    usage: ["`/set-team team_id:<teamId>`"],
+    notes: [
+      "team_id は正の整数を指定してください。",
+      "登録済みの場合は `/entry` や `/entry-now` で team_id を省略できます (アカウントを指定している場合はアカウントに紐づく値を使用します)。",
+    ],
+  },
+  {
+    key: "escl.account",
+    choiceName: "/escl account",
+    title: "**/escl account**",
+    summary: "ESCL アカウントの登録・一覧・削除・デフォルト設定を行います。",
+    usage: [
+      "`/escl account register`",
+      "`/escl account list`",
+      "`/escl account remove account:<ID>`",
+      "`/escl account set-default account:<ID>`",
+    ],
+    notes: [
+      "登録時は ESCL JWT と team_id を入力するモーダルが開きます。",
+      "アカウント管理を利用するには `ESCL_SECRET_KEY` の設定が必要です。未設定の場合はレガシー環境変数 `ESCL_JWT` を利用したモードをご利用ください。",
+    ],
+  },
+  {
+    key: "list-active",
+    choiceName: "/list-active",
+    title: "**/list-active**",
+    summary: "受付中または近日の ESCL スクリム情報を表示します。",
+    usage: ["`/list-active [account:<ID>]`"],
+    notes: [
+      "応答はエフェメラルで返されます。",
+      "アカウントを指定するとその資格情報で API を呼び出します。指定しない場合はデフォルトアカウントまたはレガシー ESCL_JWT を利用します。",
+    ],
+  },
+  {
+    key: "entry",
+    choiceName: "/entry",
+    title: "**/entry**",
+    summary: "ESCL 応募を前日 0:00 (JST) に予約し最大 3 回リトライします。",
+    usage: [
+      "`/entry event_date:<YYYY-MM-DD> scrim_id:<ID> [team_id:<ID>] [dispatch_at:<HH:MM>] [account:<ID>]`",
+    ],
+    notes: [
+      "アカウントを指定するとその JWT / team_id を使用します。指定しない場合はデフォルトアカウント、なければ `/set-team` の登録値と ESCL_JWT を利用します。",
+      "team_id を明示する場合はアカウントに登録されている値と一致している必要があります。",
+      "dispatch_at を指定しない場合は前日 0:00 JST が既定です。",
+    ],
+  },
+  {
+    key: "entry-now",
+    choiceName: "/entry-now",
+    title: "**/entry-now**",
+    summary: "ESCL 応募を即時に送信します（リトライなし）。",
+    usage: ["`/entry-now event_date:<YYYY-MM-DD> scrim_id:<ID> [team_id:<ID>] [account:<ID>]`"],
+    notes: [
+      "応募状況は同チャンネルのスレッド、もしくはチャンネル本体で共有されます。",
+      "アカウントを指定しない場合はデフォルトアカウント、なければ `/set-team` の登録値と ESCL_JWT を利用します。",
     ],
   },
   {

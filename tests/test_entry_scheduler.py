@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import List
 
 import pytest
@@ -57,6 +57,14 @@ def test_compute_run_at_returns_previous_midnight() -> None:
     assert run_at.date() == date(2025, 1, 1)
     assert run_at.hour == 0
     assert run_at.minute == 0
+    assert run_at.tzinfo is not None
+
+
+def test_compute_run_at_with_custom_time() -> None:
+    run_at = compute_run_at(date(2025, 1, 2), dispatch_time=time(6, 30))
+    assert run_at.date() == date(2025, 1, 1)
+    assert run_at.hour == 6
+    assert run_at.minute == 30
     assert run_at.tzinfo is not None
 
 
@@ -135,3 +143,61 @@ def test_execute_attempts_handles_429_backoff() -> None:
     assert result.attempts == 2
     assert any("レート制限" in log for log in logs)
     assert sleeper.calls == [1.0, 0.5]
+
+
+def test_run_entry_immediately_success() -> None:
+    now = _now_jst()
+    client = FakeApiClient([ESCLResponse(status_code=200, payload={"message": "ok"}, text="ok")])
+    scheduler = EntryScheduler(client)
+
+    logs: List[str] = []
+
+    async def log_hook(message: str) -> None:
+        logs.append(message)
+
+    async def run() -> EntryJobResult:
+        return await scheduler.run_entry_immediately(
+            user_id=1,
+            scrim_id=123,
+            team_id=456,
+            entry_date=now.date(),
+            log_hook=log_hook,
+            now=now,
+        )
+
+    result = asyncio.run(run())
+
+    assert result.ok is True
+    assert result.attempts == 1
+    assert client.calls == 1
+    assert any("即時送信" in log for log in logs)
+
+
+def test_run_entry_immediately_failure_uses_single_attempt() -> None:
+    now = _now_jst()
+    client = FakeApiClient(
+        [ESCLResponse(status_code=422, payload={"message": "not open"}, text="not open")]
+    )
+    scheduler = EntryScheduler(client)
+
+    logs: List[str] = []
+
+    async def log_hook(message: str) -> None:
+        logs.append(message)
+
+    async def run() -> EntryJobResult:
+        return await scheduler.run_entry_immediately(
+            user_id=1,
+            scrim_id=123,
+            team_id=456,
+            entry_date=now.date(),
+            log_hook=log_hook,
+            now=now,
+        )
+
+    result = asyncio.run(run())
+
+    assert result.ok is False
+    assert result.attempts == 1
+    assert client.calls == 1
+    assert any("受付開始前" in log or "status=422" in log for log in logs)

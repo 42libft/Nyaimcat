@@ -51,22 +51,17 @@ python -m src.esclbot.cli xlsx "https://fightnt.escl.co.jp/scrims/..." --group G
 ./scripts/run_esclbot.sh
 ```
 （Node.js ランタイムと同一トークンを共有すると Slash Command が上書きされる点にご注意ください。）
+> **追記 (2025-10):** Python Bot は Slash コマンドを公開しません。上記スクリプトで起動した場合でも、応募系コマンドは登録されず CSV / Excel 生成用途のみを想定しています。
 
-### Discord Slash コマンド（応募予約 v2）
-Python Bot 側に ESCL 応募専用コマンドを追加しました。`.env` には少なくとも次の値を設定してください。
+### Discord Slash コマンド（応募予約 v2 / Node.js 版）
+ESCL 応募ワークフローは Node.js ランタイム（`bot-runtime/`）へ移行しました。Python Bot はこれらのコマンドを提供せず、CSV / Excel 生成ツールとして運用します。最新の Slash コマンド実装は次を参照してください。
 
-- `DISCORD_TOKEN` / `DISCORD_CLIENT_ID`
-- `ESCL_JWT` — FightNT ログイン後に取得した JWT
-- `DEFAULT_TEAM_ID` — teamId の初期値（例: 2966）
-- `TZ=Asia/Tokyo`（任意ですがログが JST で揃います）
+- `bot-runtime/src/discord/commands/entry.ts` — 応募予約（前日 0:00 JST 実行、最大 3 回リトライ）
+- `bot-runtime/src/discord/commands/entryNow.ts` — 即時応募（リトライなし）
+- `bot-runtime/src/discord/commands/setTeam.ts` — Discord userId ↔ teamId の永続化
+- `bot-runtime/src/discord/commands/listActive.ts` — `ListActiveScrim` の結果をエフェメラル表示
 
-コマンド一覧:
-
-- `/set-team team_id:<int>` — コマンド実行者の Discord userId ↔ teamId を `data/team_ids.json` に永続化します。
-- `/list-active` — ESCL の `ListActiveScrim` を呼び出し、近い開催日を scrimId と併せて表示します（エフェメラル）。
-- `/entry event_date:YYYY-MM-DD scrim_id:<int> [team_id:<int>]` — 開催日の前日 0:00(JST) に 0.5 秒間隔×最大 6 回で応募を送信します。進捗はコマンド発行チャンネルのスレッドに通知され、成功・失敗ともに HTTP ステータスとメッセージを表示します。
-
-> **補足:** `team_id` を省略した場合は `/set-team` で登録した値、登録がなければ `DEFAULT_TEAM_ID` を利用します。`team_ids.json` は自動生成され、Bot 再起動後も継続して利用できます。
+> **注意:** Python Bot と Node.js Bot を同一トークンで併用すると Slash Command が競合するため、運用環境では Node.js 側のみを稼働させてください。
 
 ## Nyaimlab 管理 API (FastAPI)
 `src/nyaimlab/` には Pages 向けダッシュボードのバックエンドを提供する FastAPI アプリが含まれています。状態はインメモリで管理し、すべてのリクエストに対して監査ログを記録します。

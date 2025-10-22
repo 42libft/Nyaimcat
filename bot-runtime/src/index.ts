@@ -1,3 +1,5 @@
+import { existsSync } from "fs";
+import path from "path";
 import dotenv from "dotenv";
 
 import { ConfigWatcher, loadConfig } from "./config";
@@ -9,8 +11,45 @@ import {
   evaluateDiscordActionsHealth,
 } from "./health/checks";
 import { initializeHealthAlerts } from "./health/alerts";
+import { rehydrateHealthRegistryFromHistory } from "./health/rehydrate";
 
-dotenv.config();
+const loadEnvFiles = () => {
+  const candidates = [
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(__dirname, "..", ".env"),
+    path.resolve(__dirname, "..", "..", ".env"),
+  ];
+
+  const loaded: string[] = [];
+
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) {
+      continue;
+    }
+
+    const result = dotenv.config({ path: candidate, override: false });
+    if (!result.error) {
+      loaded.push(candidate);
+    }
+  }
+
+  if (loaded.length === 0) {
+    const fallback = dotenv.config();
+    if (!fallback.error) {
+      loaded.push(path.resolve(process.cwd(), ".env"));
+    }
+  }
+
+  return loaded;
+};
+
+const loadedEnvPaths = loadEnvFiles();
+
+if (loadedEnvPaths.length > 0) {
+  logger.debug("環境変数ファイルを読み込みました", {
+    paths: loadedEnvPaths,
+  });
+}
 
 logger.info("Codex CLI 実行設定を読み込みました", {
   sandboxArgs: process.env.CODEX_CLI_ARGS ?? "(未設定)",
@@ -40,6 +79,7 @@ const bootstrap = async () => {
     features: activeConfig.features,
   });
 
+  await rehydrateHealthRegistryFromHistory();
   initializeHealthAlerts();
 
   evaluateAuditLogChannel(activeConfig);

@@ -23,6 +23,7 @@ export declare class DiscordRuntime {
     private introduceManager;
     private codexFollowUpManager;
     private presenceManager;
+    private escl;
     constructor(options: DiscordClientOptions);
     start(): Promise<void>;
     applyConfigUpdate(config: BotConfig, context?: {
@@ -34,5 +35,7 @@ export declare class DiscordRuntime {
     private registerSlashCommands;
     private buildCommandContext;
     private handleChatCommand;
+    private handleAutocomplete;
+    private handleEsclAccountModal;
 }
 //# sourceMappingURL=client.d.ts.map

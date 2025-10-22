@@ -3,13 +3,45 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = require("fs");
+const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const config_1 = require("./config");
 const logger_1 = require("./utils/logger");
 const client_1 = require("./discord/client");
 const checks_1 = require("./health/checks");
 const alerts_1 = require("./health/alerts");
-dotenv_1.default.config();
+const rehydrate_1 = require("./health/rehydrate");
+const loadEnvFiles = () => {
+    const candidates = [
+        path_1.default.resolve(process.cwd(), ".env"),
+        path_1.default.resolve(__dirname, "..", ".env"),
+        path_1.default.resolve(__dirname, "..", "..", ".env"),
+    ];
+    const loaded = [];
+    for (const candidate of candidates) {
+        if (!(0, fs_1.existsSync)(candidate)) {
+            continue;
+        }
+        const result = dotenv_1.default.config({ path: candidate, override: false });
+        if (!result.error) {
+            loaded.push(candidate);
+        }
+    }
+    if (loaded.length === 0) {
+        const fallback = dotenv_1.default.config();
+        if (!fallback.error) {
+            loaded.push(path_1.default.resolve(process.cwd(), ".env"));
+        }
+    }
+    return loaded;
+};
+const loadedEnvPaths = loadEnvFiles();
+if (loadedEnvPaths.length > 0) {
+    logger_1.logger.debug("環境変数ファイルを読み込みました", {
+        paths: loadedEnvPaths,
+    });
+}
 logger_1.logger.info("Codex CLI 実行設定を読み込みました", {
     sandboxArgs: process.env.CODEX_CLI_ARGS ?? "(未設定)",
     blockedFlags: process.env.CODEX_CLI_BLOCKED_FLAGS ?? "(未設定)",
@@ -32,6 +64,7 @@ const bootstrap = async () => {
         channels: activeConfig.channels,
         features: activeConfig.features,
     });
+    await (0, rehydrate_1.rehydrateHealthRegistryFromHistory)();
     (0, alerts_1.initializeHealthAlerts)();
     (0, checks_1.evaluateAuditLogChannel)(activeConfig);
     (0, checks_1.evaluateCodexNotificationSettings)();

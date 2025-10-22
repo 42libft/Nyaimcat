@@ -12,6 +12,7 @@ const stripDetectedAt = (line) => line.replace(/\s*\(検知:[^)]+\)\s*$/, "").tr
 class PresenceManager {
     constructor(client) {
         this.client = client;
+        this.unsubscribe = null;
         this.started = false;
     }
     start() {
@@ -30,7 +31,7 @@ class PresenceManager {
             return;
         }
         this.unsubscribe?.();
-        this.unsubscribe = undefined;
+        this.unsubscribe = null;
         this.started = false;
     }
     async refresh() {

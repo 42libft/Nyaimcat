@@ -54,7 +54,7 @@ class EntryScheduler:
     """
     ESCL 応募スケジューラ。
 
-    - run_at（前日 0:00 JST）まで待機し、0.5 秒間隔 × 最大6回で応募を試行
+    - run_at（前日 0:00 JST）まで待機し、0.5 秒間隔 × 最大3回で応募を試行
     - ログは log_hook 経由で逐次通知
     """
 
@@ -63,7 +63,7 @@ class EntryScheduler:
         api_client: ESCLApiClient,
         *,
         timezone: ZoneInfo = JST,
-        max_attempts: int = 6,
+        max_attempts: int = 3,
         retry_interval: float = 0.5,
         retry_backoff_after_429: float = 1.0,
         sleep_coro: Optional[Callable[[float], Awaitable[None]]] = None,
@@ -96,12 +96,13 @@ class EntryScheduler:
         scrim_id: int,
         team_id: int,
         entry_date: date,
+        dispatch_time: Optional[time] = None,
         log_hook: LogHook,
         result_hook: Optional[ResultHook] = None,
         job_id: Optional[str] = None,
         now: Optional[datetime] = None,
     ) -> EntryJobMetadata:
-        run_at = compute_run_at(entry_date, self._tz)
+        run_at = compute_run_at(entry_date, self._tz, dispatch_time=dispatch_time)
         job_id = job_id or secrets.token_hex(8)
         now_dt = now or datetime.now(self._tz)
         meta = EntryJobMetadata(
@@ -149,10 +150,11 @@ class EntryScheduler:
     ) -> None:
         try:
             await self._await_until(meta.run_at, now=now, log_hook=log_hook)
+            attempts = self._max_attempts
             await log_hook(
-                f"応募送信を開始します: scrim_id={meta.scrim_id}, team_id={meta.team_id}, 最大試行 {self._max_attempts} 回"
+                f"応募送信を開始します: scrim_id={meta.scrim_id}, team_id={meta.team_id}, 最大試行 {attempts} 回"
             )
-            result = await self._execute_attempts(meta, log_hook=log_hook)
+            result = await self._execute_attempts(meta, log_hook=log_hook, max_attempts=attempts)
             if result_hook:
                 await result_hook(result)
         except asyncio.CancelledError:
@@ -184,12 +186,19 @@ class EntryScheduler:
         await log_hook(f"応募実行まで {hours}時間 {minutes}分 {seconds}秒 待機します。")
         await self._sleep(delay)
 
-    async def _execute_attempts(self, meta: EntryJobMetadata, *, log_hook: LogHook) -> EntryJobResult:
+    async def _execute_attempts(
+        self,
+        meta: EntryJobMetadata,
+        *,
+        log_hook: LogHook,
+        max_attempts: Optional[int] = None,
+    ) -> EntryJobResult:
+        attempts_limit = max_attempts or self._max_attempts
         last_status: Optional[int] = None
         last_detail: Optional[str] = None
         last_payload: Optional[Dict[str, object]] = None
 
-        for attempt in range(1, self._max_attempts + 1):
+        for attempt in range(1, attempts_limit + 1):
             try:
                 response = await self._api_client.create_application(
                     scrim_id=meta.scrim_id, team_id=meta.team_id
@@ -197,7 +206,7 @@ class EntryScheduler:
             except ESCLAuthError as exc:
                 payload = exc.response.payload if isinstance(exc.response.payload, dict) else None
                 summary = "ESCL API 認証エラー: JWT を再設定してください。"
-                await log_hook(f"[{attempt}/{self._max_attempts}] 認証エラーが発生しました。")
+                await log_hook(f"[{attempt}/{attempts_limit}] 認証エラーが発生しました。")
                 return EntryJobResult(
                     ok=False,
                     status_code=exc.response.status_code,
@@ -207,12 +216,12 @@ class EntryScheduler:
                     payload=payload,
                 )
             except ESCLNetworkError as exc:
-                await log_hook(f"[{attempt}/{self._max_attempts}] ネットワークエラー: {exc}")
+                await log_hook(f"[{attempt}/{attempts_limit}] ネットワークエラー: {exc}")
                 last_status = None
                 last_detail = str(exc)
                 last_payload = None
             except ESCLAPIError as exc:
-                await log_hook(f"[{attempt}/{self._max_attempts}] APIエラー: {exc}")
+                await log_hook(f"[{attempt}/{attempts_limit}] APIエラー: {exc}")
                 last_status = None
                 last_detail = str(exc)
                 last_payload = None
@@ -225,7 +234,7 @@ class EntryScheduler:
                 last_payload = payload
 
                 if status in (200, 201):
-                    await log_hook(f"[{attempt}/{self._max_attempts}] 成功しました (status={status}).")
+                    await log_hook(f"[{attempt}/{attempts_limit}] 成功しました (status={status}).")
                     return EntryJobResult(
                         ok=True,
                         status_code=status,
@@ -237,7 +246,7 @@ class EntryScheduler:
 
                 if status == 409:
                     await log_hook(
-                        f"[{attempt}/{self._max_attempts}] 既に応募済みです (status=409)。"
+                        f"[{attempt}/{attempts_limit}] 既に応募済みです (status=409)。"
                     )
                     return EntryJobResult(
                         ok=True,
@@ -250,7 +259,7 @@ class EntryScheduler:
 
                 if status == 401:
                     await log_hook(
-                        f"[{attempt}/{self._max_attempts}] 認証エラー (status=401)。JWT を更新してください。"
+                        f"[{attempt}/{attempts_limit}] 認証エラー (status=401)。JWT を更新してください。"
                     )
                     return EntryJobResult(
                         ok=False,
@@ -263,20 +272,20 @@ class EntryScheduler:
 
                 if status == 422:
                     await log_hook(
-                        f"[{attempt}/{self._max_attempts}] 受付開始前または終了後の可能性があります (status=422)。"
+                        f"[{attempt}/{attempts_limit}] 受付開始前または終了後の可能性があります (status=422)。"
                     )
                 elif status == 429:
                     await log_hook(
-                        f"[{attempt}/{self._max_attempts}] レート制限 (status=429)。追加で {self._backoff_after_429:.1f} 秒待機します。"
+                        f"[{attempt}/{attempts_limit}] レート制限 (status=429)。追加で {self._backoff_after_429:.1f} 秒待機します。"
                     )
-                    if attempt != self._max_attempts:
+                    if attempt != attempts_limit:
                         await self._sleep(self._backoff_after_429)
                 else:
                     await log_hook(
-                        f"[{attempt}/{self._max_attempts}] 応答 status={status}。引き続きリトライします。"
+                        f"[{attempt}/{attempts_limit}] 応答 status={status}。引き続きリトライします。"
                     )
 
-            if attempt != self._max_attempts:
+            if attempt != attempts_limit:
                 await self._sleep(self._retry_interval)
 
         summary = "応募が成功しませんでした。"
@@ -288,15 +297,54 @@ class EntryScheduler:
         return EntryJobResult(
             ok=False,
             status_code=last_status,
-            attempts=self._max_attempts,
+            attempts=attempts_limit,
             summary=summary,
             detail=last_detail,
             payload=last_payload,
         )
 
-def compute_run_at(entry_date: date, tz: ZoneInfo = JST) -> datetime:
+    async def run_entry_immediately(
+        self,
+        *,
+        user_id: int,
+        scrim_id: int,
+        team_id: int,
+        entry_date: date,
+        log_hook: LogHook,
+        result_hook: Optional[ResultHook] = None,
+        now: Optional[datetime] = None,
+    ) -> EntryJobResult:
+        now_dt = now or datetime.now(self._tz)
+        meta = EntryJobMetadata(
+            job_id=f"now-{secrets.token_hex(6)}",
+            scrim_id=scrim_id,
+            team_id=team_id,
+            entry_date=entry_date,
+            run_at=now_dt,
+            created_by=user_id,
+            created_at=now_dt,
+        )
+        await log_hook(
+            f"応募を即時送信します: scrim_id={meta.scrim_id}, team_id={meta.team_id}, リトライなし"
+        )
+        result = await self._execute_attempts(meta, log_hook=log_hook, max_attempts=1)
+        if result_hook:
+            await result_hook(result)
+        return result
+
+
+def compute_run_at(
+    entry_date: date,
+    tz: ZoneInfo = JST,
+    *,
+    dispatch_time: Optional[time] = None,
+) -> datetime:
     run_date = entry_date - timedelta(days=1)
-    return datetime.combine(run_date, time(0, 0, tzinfo=tz)).astimezone(tz)
+    send_time = dispatch_time or time(0, 0)
+    if send_time.tzinfo is None:
+        send_time = send_time.replace(tzinfo=tz)
+    run_at = datetime.combine(run_date, send_time)
+    return run_at.astimezone(tz)
 
 
 def _summarize_payload(payload: Optional[Dict[str, object]]) -> Optional[str]:

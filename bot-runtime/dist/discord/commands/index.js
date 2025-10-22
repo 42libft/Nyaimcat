@@ -14,11 +14,21 @@ const feedback_1 = require("./feedback");
 const task_1 = require("./task");
 const work_1 = require("./work");
 const status_1 = require("./status");
+const setTeam_1 = require("./setTeam");
+const listActive_1 = require("./listActive");
+const entry_1 = require("./entry");
+const entryNow_1 = require("./entryNow");
+const esclAccount_1 = require("./esclAccount");
 exports.commandModules = [
     help_1.helpCommand,
     version_1.versionCommand,
     esclCsv_1.esclFromParentCsvCommand,
     esclXlsx_1.esclFromParentXlsxCommand,
+    setTeam_1.setTeamCommand,
+    esclAccount_1.esclAccountCommand,
+    listActive_1.listActiveCommand,
+    entry_1.entryCommand,
+    entryNow_1.entryNowCommand,
     ping_1.pingCommand,
     verify_1.verifyCommand,
     roles_1.rolesCommand,

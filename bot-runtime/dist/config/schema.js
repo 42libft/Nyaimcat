@@ -64,7 +64,7 @@ exports.IntroduceSchemaConfigSchema = zod_1.z.object({
 exports.IntroduceConfigSchema = zod_1.z.object({
     channel_id: SnowflakeSchema,
     mention_role_ids: zod_1.z.array(SnowflakeSchema).default([]),
-    embed_title: zod_1.z.string().min(1).max(256).default("自己紹介"),
+    embed_title: zod_1.z.string().max(256).default("自己紹介"),
     footer_text: zod_1.z.string().max(64).nullable().optional(),
 });
 exports.SettingsConfigSchema = zod_1.z

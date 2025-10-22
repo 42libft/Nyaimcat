@@ -28,6 +28,7 @@ cp .env.example .env
 - `npm run codex-runner`: 保存されたタスクを選択し Codex CLI を起動します。
 - `npm run codex-queue-harness`: Codex 実行キューのリトライやタイムアウト挙動を再現します。
 - `npm run health-history -- <summary|detail|timeline>`: `tasks/runs/health/` に保存されたヘルスチェック履歴を集計し、概要やタイムラインを確認できます。
+- `npm run escl-rotate-secret -- --new-key <BASE64>`: `data/escl_credentials.enc` を新しい `ESCL_SECRET_KEY` で再暗号化します。`--old-key` を省略すると現在の環境変数 `ESCL_SECRET_KEY` を利用します。
 
 ## 監査ログ
 `config.yaml`の`channels.auditLog`に指定したチャンネルへ、JSON形式で監査ログを送信します。Slash Command実行結果、メンバー参加、リアクション追加、設定更新イベントが記録されます。
@@ -35,3 +36,9 @@ cp .env.example .env
 ## フィードバック保存
 Slash Command `/feedback` を使用すると、不具合報告とアイデアが `feedback/bugs` と `feedback/ideas` 配下に Markdown 形式で保存されます。
 保存されたファイルには送信者・チャンネル・送信日時などのメタ情報が含まれます。
+
+## ESCL アカウント管理
+- `ESCL_SECRET_KEY` を `.env` に設定すると、ESCL JWT と teamId を暗号化した状態で `data/escl_credentials.enc` に保存できます。
+- Slash Command `/escl account register|list|remove|set-default` でアカウントの登録・確認・削除・デフォルト切り替えを行います。登録時は JWT の検証を行い、成功すると暗号化ストアを自動更新します。
+- 応募系コマンド `/entry` `/entry-now` `/list-active` では `account` オプションから登録済みアカウントを選択でき、指定が無い場合はデフォルトアカウントまたはレガシー環境変数 `ESCL_JWT` を利用します。
+- 暗号化キーをローテーションしたい場合は `npm run escl-rotate-secret -- --new-key <BASE64>` を実行し、`.env` の `ESCL_SECRET_KEY` を新しい値に更新したうえで Bot を再起動してください。

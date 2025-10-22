@@ -5,22 +5,26 @@ import {
   Partials,
   REST,
   Routes,
+  type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   type GuildMember,
   type PartialGuildMember,
   type MessageReaction,
   type PartialMessageReaction,
   type PartialUser,
+  type ModalSubmitInteraction,
   type User,
 } from "discord.js";
 
 import type { BotConfig } from "../config";
+import { createEsclEnvironment, EsclEnvironment } from "../escl/environment";
 import { logger } from "../utils/logger";
 import {
   buildCommandCollection,
   commandModules,
 } from "./commands/index";
 import { handleWorkStartSelect } from "./commands/work";
+import { handleEsclAccountModalSubmit } from "./commands/esclAccount";
 import type { CommandExecuteContext, SlashCommandModule } from "./commands/types";
 import { AuditLogger } from "./auditLogger";
 import { OnboardingManager } from "./onboarding/manager";
@@ -68,6 +72,7 @@ export class DiscordRuntime {
   private introduceManager: IntroduceManager;
   private codexFollowUpManager: CodexFollowUpManager;
   private presenceManager: PresenceManager;
+  private escl: EsclEnvironment;
 
   constructor(options: DiscordClientOptions) {
     this.token = options.token;
@@ -94,9 +99,18 @@ export class DiscordRuntime {
     );
     this.introduceManager = new IntroduceManager(this.auditLogger, this.config);
     this.presenceManager = new PresenceManager(this.client);
+    this.escl = createEsclEnvironment();
   }
 
   async start() {
+    try {
+      await this.escl.initialize();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("ESCL 環境の初期化に失敗しました", { message });
+      throw error;
+    }
+
     if (this.syncCommands) {
       await this.registerSlashCommands();
     } else {
@@ -332,9 +346,18 @@ export class DiscordRuntime {
         return;
       }
 
+      if (interaction.isAutocomplete()) {
+        await this.handleAutocomplete(interaction);
+        return;
+      }
+
       if (interaction.isModalSubmit()) {
         const handled = await this.codexFollowUpManager.handleModalSubmit(interaction);
         if (handled) {
+          return;
+        }
+        const modalHandled = await this.handleEsclAccountModal(interaction);
+        if (modalHandled) {
           return;
         }
         await this.introduceManager.handleModalSubmit(interaction);
@@ -385,6 +408,7 @@ export class DiscordRuntime {
       verifyManager: this.verifyManager,
       rolesManager: this.rolesManager,
       introduceManager: this.introduceManager,
+      escl: this.escl,
     };
   }
 
@@ -452,5 +476,49 @@ export class DiscordRuntime {
         },
       });
     }
+  }
+
+  private async handleAutocomplete(interaction: AutocompleteInteraction) {
+    const command = this.commands.get(interaction.commandName);
+
+    if (!command || !command.autocomplete) {
+      try {
+        await interaction.respond([]);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.debug("オートコンプリート応答に失敗しました", { message });
+      }
+      return;
+    }
+
+    try {
+      await command.autocomplete(interaction, this.buildCommandContext());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("Autocomplete ハンドラでエラーが発生しました", {
+        command: interaction.commandName,
+        message,
+      });
+      try {
+        await interaction.respond([]);
+      } catch (respondError) {
+        const respondMessage =
+          respondError instanceof Error ? respondError.message : String(respondError);
+        logger.debug("オートコンプリートのフォールバック応答に失敗しました", {
+          command: interaction.commandName,
+          message: respondMessage,
+        });
+      }
+    }
+  }
+
+  private async handleEsclAccountModal(
+    interaction: ModalSubmitInteraction
+  ): Promise<boolean> {
+    const handled = await handleEsclAccountModalSubmit(
+      interaction,
+      this.buildCommandContext()
+    );
+    return handled;
   }
 }

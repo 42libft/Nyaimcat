@@ -1,7 +1,7 @@
 import { type Client } from "discord.js";
 export declare class PresenceManager {
     private readonly client;
-    private unsubscribe?;
+    private unsubscribe;
     private started;
     constructor(client: Client);
     start(): void;

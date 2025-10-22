@@ -11,7 +11,8 @@
     "task-inbox": "ts-node src/cli/taskInbox.ts",
     "codex-runner": "ts-node src/cli/codexRunner.ts",
     "codex-queue-harness": "ts-node src/cli/codexQueueHarness.ts",
-    "health-history": "ts-node src/cli/healthHistory.ts"
+    "health-history": "ts-node src/cli/healthHistory.ts",
+    "escl-rotate-secret": "ts-node scripts/escl/rotate_secret.ts"
   },
   "keywords": [],
   "author": "",

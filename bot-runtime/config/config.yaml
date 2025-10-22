@@ -42,7 +42,7 @@ embeds:
   verifyTemplate: "./embeds/verify.mdx"
 
 onboarding:
-  guideUrl: "https://nyaimlab.example.com/guide"
+  guideUrl: "https://ashu55.notion.site/Nyaimlab-26d838aa64db80218c0cfa99ea816b15?source=copy_link"
   guideLabel: "ガイドを読む"
   rolesButtonLabel: "ロールを設定"
   rolesChannelId: "1411214661612867624"
@@ -89,7 +89,7 @@ introduce:
   channel_id: "1411214661612867624"
   mention_role_ids:
     - "789012345678901234"
-  embed_title: "自己紹介"
+  embed_title: ""
   footer_text: "Nyaimlab"
 
 introduce_schema:
@@ -100,6 +100,24 @@ introduce_schema:
       required: true
       enabled: true
       max_length: 80
+    - field_id: "status"
+      label: "ステータス"
+      placeholder: "例: プレイヤー / マネージャー / コーチ / サポート"
+      required: true
+      enabled: true
+      max_length: 200
+    - field_id: "play_style"
+      label: "活動スタイル"
+      placeholder: "例: ランク / カスタム / コーチング"
+      required: false
+      enabled: true
+      max_length: 200
+    - field_id: "availability"
+      label: "活動時間・募集"
+      placeholder: "例: 平日21:00以降 / 一緒に練習できる方募集中"
+      required: false
+      enabled: true
+      max_length: 250
     - field_id: "bio"
       label: "ひとこと"
       placeholder: "自由に記入してください"

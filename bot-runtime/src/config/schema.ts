@@ -70,7 +70,7 @@ export const IntroduceSchemaConfigSchema = z.object({
 export const IntroduceConfigSchema = z.object({
   channel_id: SnowflakeSchema,
   mention_role_ids: z.array(SnowflakeSchema).default([]),
-  embed_title: z.string().min(1).max(256).default("自己紹介"),
+  embed_title: z.string().max(256).default("自己紹介"),
   footer_text: z.string().max(64).nullable().optional(),
 });
 

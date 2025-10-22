@@ -16,11 +16,11 @@ from .api_scraper import (
     get_scrim_name,
     parse_scrim_group_from_url,
 )
-from .bot import (
-    __BOT_VERSION__,
-    _aggregate_player_totals,
-    _aggregate_team_totals,
-    _safe_name,
+from .bot import __BOT_VERSION__
+from .reports import (
+    aggregate_player_totals,
+    aggregate_team_totals,
+    safe_filename_component,
 )
 
 
@@ -28,7 +28,7 @@ def _title_from_parent(parent_url: str, group: str) -> str:
     with contextlib.redirect_stdout(io.StringIO()):
         scrim_uuid, group_uuid = parse_scrim_group_from_url(parent_url)
     scrim_name = get_scrim_name(scrim_uuid, group_uuid) or "ESCL_Scrim"
-    title = f"{_safe_name(scrim_name)}_{_safe_name(group)}".rstrip("_")
+    title = f"{safe_filename_component(scrim_name)}_{safe_filename_component(group)}".rstrip("_")
     return title or "ESCL_Scrim"
 
 
@@ -45,10 +45,10 @@ def _build_xlsx(df_all: pd.DataFrame) -> bytes:
             dfg = df_all[df_all["game"] == g]
             dfg.to_excel(writer, sheet_name=f"GAME{g}", index=False)
 
-        player_totals = _aggregate_player_totals(df_all)
+        player_totals = aggregate_player_totals(df_all)
         player_totals.to_excel(writer, sheet_name="ALL_GAMES", index=False)
 
-        team_totals = _aggregate_team_totals(df_all)
+        team_totals = aggregate_team_totals(df_all)
         team_totals.to_excel(writer, sheet_name="TEAM_TOTALS", index=False)
 
     mem.seek(0)

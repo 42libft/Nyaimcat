@@ -1,0 +1,117 @@
+#!/usr/bin/env ts-node
+
+import path from "node:path";
+
+import { CredentialStore, parseSecretKey } from "../../src/escl/credentialStore";
+
+const DEFAULT_CREDENTIAL_PATH = path.resolve(
+  __dirname,
+  "../../data/escl_credentials.enc"
+);
+
+type ParsedOptions = {
+  filePath: string;
+  oldKey: string;
+  newKey: string;
+};
+
+const printUsage = () => {
+  console.log(`ESCL 資格情報暗号化キーのローテーションツール\n\n`);
+  console.log("Usage: ts-node scripts/escl/rotate_secret.ts --new-key <BASE64|HEX> [--old-key <BASE64|HEX>] [--file <PATH>]");
+  console.log("  --new-key  : 必須。新しい ESCL_SECRET_KEY を Base64 / Hex / 32 文字 UTF-8 で指定します。");
+  console.log("  --old-key  : 省略時は現在の環境変数 ESCL_SECRET_KEY を利用します。");
+  console.log("  --file     : 省略時は data/escl_credentials.enc を対象とします。");
+};
+
+const parseArgs = (argv: string[]): ParsedOptions | null => {
+  let filePath = DEFAULT_CREDENTIAL_PATH;
+  let oldKey: string | null = null;
+  let newKey: string | null = null;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--file" || arg === "-f") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("--file オプションにはパスを指定してください。");
+      }
+      filePath = path.resolve(process.cwd(), value);
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--old-key") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("--old-key オプションにはキーを指定してください。");
+      }
+      oldKey = value;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--new-key") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("--new-key オプションにはキーを指定してください。");
+      }
+      newKey = value;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--help" || arg === "-h") {
+      printUsage();
+      process.exit(0);
+    }
+
+    throw new Error(`未知の引数です: ${arg}`);
+  }
+
+  const resolvedOldKey = oldKey ?? process.env.ESCL_SECRET_KEY ?? null;
+
+  if (!resolvedOldKey) {
+    throw new Error(
+      "旧キーが指定されていません。--old-key もしくは環境変数 ESCL_SECRET_KEY を設定してください。"
+    );
+  }
+
+  if (!newKey) {
+    throw new Error("--new-key オプションは必須です。");
+  }
+
+  return {
+    filePath,
+    oldKey: resolvedOldKey,
+    newKey,
+  };
+};
+
+const main = async () => {
+  try {
+    const options = parseArgs(process.argv.slice(2));
+    if (!options) {
+      printUsage();
+      process.exit(1);
+    }
+
+    const oldKey = parseSecretKey(options.oldKey);
+    const newKey = parseSecretKey(options.newKey);
+
+    if (oldKey.equals(newKey)) {
+      throw new Error("旧キーと新キーが同一です。異なるキーを指定してください。");
+    }
+
+    const store = new CredentialStore(options.filePath, oldKey);
+    await store.rotate({ oldKey, newKey });
+
+    console.log("✅ 資格情報ファイルの再暗号化が完了しました。");
+    console.log("新しい ESCL_SECRET_KEY に更新し、Bot を再起動してください。");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`❌ ローテーションに失敗しました: ${message}`);
+    process.exit(1);
+  }
+};
+
+void main();

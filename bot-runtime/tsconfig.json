@@ -38,6 +38,8 @@
 
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
-  }
+    "moduleResolution": "node"
+  },
+  "include": ["src"],
+  "exclude": ["dist", "scripts"]
 }
