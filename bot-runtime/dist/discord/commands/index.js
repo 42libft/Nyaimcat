@@ -19,6 +19,7 @@ const listActive_1 = require("./listActive");
 const entry_1 = require("./entry");
 const entryNow_1 = require("./entryNow");
 const esclAccount_1 = require("./esclAccount");
+const health_1 = require("./health");
 exports.commandModules = [
     help_1.helpCommand,
     version_1.versionCommand,
@@ -37,6 +38,7 @@ exports.commandModules = [
     task_1.taskCommand,
     work_1.workCommand,
     status_1.statusCommand,
+    health_1.healthCommand,
 ];
 const buildCommandCollection = () => {
     const collection = new discord_js_1.Collection();

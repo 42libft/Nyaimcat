@@ -5,6 +5,7 @@ import {
   Partials,
   REST,
   Routes,
+  MessageFlags,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   type GuildMember,
@@ -33,6 +34,7 @@ import { RolesPanelManager } from "./roles/manager";
 import { IntroduceManager } from "./introduce/manager";
 import { CodexFollowUpManager } from "./codex/followUpManager";
 import { PresenceManager } from "./presenceManager";
+import { PermissionMonitor } from "../health/permissionMonitor";
 
 export type DiscordClientOptions = {
   token: string;
@@ -72,6 +74,7 @@ export class DiscordRuntime {
   private introduceManager: IntroduceManager;
   private codexFollowUpManager: CodexFollowUpManager;
   private presenceManager: PresenceManager;
+  private permissionMonitor: PermissionMonitor;
   private escl: EsclEnvironment;
 
   constructor(options: DiscordClientOptions) {
@@ -99,6 +102,7 @@ export class DiscordRuntime {
     );
     this.introduceManager = new IntroduceManager(this.auditLogger, this.config);
     this.presenceManager = new PresenceManager(this.client);
+    this.permissionMonitor = new PermissionMonitor(this.client, this.config);
     this.escl = createEsclEnvironment();
   }
 
@@ -141,6 +145,7 @@ export class DiscordRuntime {
     this.rolesManager.updateConfig(config);
     this.introduceManager.updateConfig(config);
     void this.presenceManager.refresh();
+    this.permissionMonitor.updateConfig(config);
 
     logger.debug("DiscordRuntime 設定を更新しました", {
       changedSections: context?.changedSections ?? [],
@@ -168,6 +173,7 @@ export class DiscordRuntime {
       }
 
       this.presenceManager.start();
+      this.permissionMonitor.start();
 
       logger.info("Discord クライアントが起動しました", {
         user: this.client.user.tag,
@@ -421,7 +427,7 @@ export class DiscordRuntime {
       });
       await interaction.reply({
         content: "このコマンドは現在利用できません。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -448,12 +454,12 @@ export class DiscordRuntime {
         if (interaction.deferred || interaction.replied) {
           await interaction.followUp({
             content: "コマンド実行中にエラーが発生しました。",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else if (interaction.isRepliable()) {
           await interaction.reply({
             content: "コマンド実行中にエラーが発生しました。",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       } catch (responseError) {

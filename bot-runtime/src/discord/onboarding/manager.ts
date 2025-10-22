@@ -5,6 +5,7 @@ import {
   Client,
   GuildMember,
   GuildTextBasedChannel,
+  MessageFlags,
   Message,
 } from "discord.js";
 
@@ -162,7 +163,7 @@ export class OnboardingManager {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.reply({
           content: "内部エラーにより案内を表示できませんでした。",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 

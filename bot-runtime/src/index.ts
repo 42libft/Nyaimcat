@@ -12,6 +12,7 @@ import {
 } from "./health/checks";
 import { initializeHealthAlerts } from "./health/alerts";
 import { rehydrateHealthRegistryFromHistory } from "./health/rehydrate";
+import { HealthHeartbeat } from "./health/heartbeat";
 
 const loadEnvFiles = () => {
   const candidates = [
@@ -81,6 +82,8 @@ const bootstrap = async () => {
 
   await rehydrateHealthRegistryFromHistory();
   initializeHealthAlerts();
+  const heartbeat = new HealthHeartbeat();
+  heartbeat.start();
 
   evaluateAuditLogChannel(activeConfig);
   evaluateCodexNotificationSettings();

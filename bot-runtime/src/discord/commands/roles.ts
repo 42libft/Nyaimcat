@@ -2,6 +2,7 @@ import {
   ChannelType,
   GuildMember,
   PermissionFlagsBits,
+  MessageFlags,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
@@ -74,12 +75,12 @@ const handlePost = async (
   if (!context.config.roles) {
     await interaction.reply({
       content: "ロールパネルの設定が存在しません。ダッシュボードから保存してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (!(await hasManagePermission(interaction, context))) {
     await interaction.editReply({
@@ -123,7 +124,7 @@ const execute = async (
   if (!interaction.guild) {
     await interaction.reply({
       content: "ギルド内でのみ使用してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -137,7 +138,7 @@ const execute = async (
 
   await interaction.reply({
     content: "未対応のサブコマンドです。",
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 };
 

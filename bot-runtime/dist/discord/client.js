@@ -14,6 +14,7 @@ const manager_3 = require("./roles/manager");
 const manager_4 = require("./introduce/manager");
 const followUpManager_1 = require("./codex/followUpManager");
 const presenceManager_1 = require("./presenceManager");
+const permissionMonitor_1 = require("../health/permissionMonitor");
 const buildIntentList = () => [
     discord_js_1.GatewayIntentBits.Guilds,
     discord_js_1.GatewayIntentBits.GuildMembers,
@@ -46,6 +47,7 @@ class DiscordRuntime {
         this.rolesManager = new manager_3.RolesPanelManager(this.client, this.auditLogger, this.config);
         this.introduceManager = new manager_4.IntroduceManager(this.auditLogger, this.config);
         this.presenceManager = new presenceManager_1.PresenceManager(this.client);
+        this.permissionMonitor = new permissionMonitor_1.PermissionMonitor(this.client, this.config);
         this.escl = (0, environment_1.createEsclEnvironment)();
     }
     async start() {
@@ -83,6 +85,7 @@ class DiscordRuntime {
         this.rolesManager.updateConfig(config);
         this.introduceManager.updateConfig(config);
         void this.presenceManager.refresh();
+        this.permissionMonitor.updateConfig(config);
         logger_1.logger.debug("DiscordRuntime 設定を更新しました", {
             changedSections: context?.changedSections ?? [],
             hash: context?.hash,
@@ -105,6 +108,7 @@ class DiscordRuntime {
                 return;
             }
             this.presenceManager.start();
+            this.permissionMonitor.start();
             logger_1.logger.info("Discord クライアントが起動しました", {
                 user: this.client.user.tag,
                 id: this.client.user.id,

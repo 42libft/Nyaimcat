@@ -1,4 +1,5 @@
 import {
+  MessageFlags,
   SlashCommandBuilder,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
@@ -50,10 +51,10 @@ const replyWithError = async (
   message: string,
   options?: { ephemeral?: boolean }
 ) => {
-  const payload = {
-    content: message,
-    ephemeral: options?.ephemeral ?? true,
-  } as const;
+  const payload =
+    options?.ephemeral === false
+      ? { content: message }
+      : { content: message, flags: MessageFlags.Ephemeral };
 
   if (interaction.deferred || interaction.replied) {
     await interaction.followUp(payload);

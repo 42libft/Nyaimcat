@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  MessageFlags,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   type ChatInputCommandInteraction,
@@ -406,7 +407,7 @@ export const handleWorkStartSelect = async (
   if (!session) {
     await interaction.reply({
       content: "この選択は有効期限が切れています。もう一度 `/work start` を実行してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return true;
   }
@@ -414,7 +415,7 @@ export const handleWorkStartSelect = async (
   if (interaction.user.id !== session.userId) {
     await interaction.reply({
       content: "この選択メニューはコマンドを実行したユーザーのみが利用できます。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return true;
   }
@@ -424,7 +425,7 @@ export const handleWorkStartSelect = async (
   if (!filename || !session.allowedFilenames.includes(filename)) {
     await interaction.reply({
       content: "選択内容が無効です。再度 `/work start` を実行してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return true;
   }

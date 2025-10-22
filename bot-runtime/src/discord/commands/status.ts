@@ -1,4 +1,8 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import {
+  MessageFlags,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+} from "discord.js";
 
 import type { CommandExecuteContext, SlashCommandModule } from "./types";
 import { codexWorkManager } from "../../codex/workManager";
@@ -120,7 +124,7 @@ const execute = async (
   interaction: ChatInputCommandInteraction,
   context: CommandExecuteContext
 ) => {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const uptimeMs =
     typeof context.client.uptime === "number"

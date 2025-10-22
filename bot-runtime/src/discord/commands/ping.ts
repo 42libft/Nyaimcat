@@ -1,4 +1,5 @@
 import {
+  MessageFlags,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
@@ -15,7 +16,7 @@ const execute = async (
 ) => {
   await interaction.reply({
     content: `Pong! (latency ${Date.now() - interaction.createdTimestamp}ms)`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 };
 

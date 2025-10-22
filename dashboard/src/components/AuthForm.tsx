@@ -29,7 +29,7 @@ const AuthForm = ({ initial, onSubmit }: Props) => {
             <label htmlFor="apiBaseUrl">API Base URL</label>
             <input
               id="apiBaseUrl"
-              placeholder="http://localhost:8080/api"
+              placeholder="http://localhost:8000/api"
               value={form.apiBaseUrl}
               onChange={handleChange('apiBaseUrl')}
               required

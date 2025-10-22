@@ -1,4 +1,5 @@
 import {
+  MessageFlags,
   SlashCommandBuilder,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
@@ -31,7 +32,7 @@ const execute = async (
   interaction: ChatInputCommandInteraction,
   context: CommandExecuteContext
 ) => {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const accountOption = interaction.options.getString("account", false);
   let apiClient = context.escl.apiClient;
@@ -43,7 +44,7 @@ const execute = async (
         await interaction.followUp({
           content:
             "アカウント機能が無効なため、特定のアカウントを指定できません。`ESCL_SECRET_KEY` を設定してください。",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -52,7 +53,7 @@ const execute = async (
       if (!account) {
         await interaction.followUp({
           content: "指定されたアカウントが見つかりませんでした。",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -74,7 +75,7 @@ const execute = async (
     });
     await interaction.followUp({
       content: "アカウント情報の取得に失敗しました。後ほど再度お試しください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -85,7 +86,7 @@ const execute = async (
     if (response.statusCode !== 200) {
       await interaction.followUp({
         content: `ListActiveScrim が status=${response.statusCode} で失敗しました。\n${response.text}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -93,7 +94,7 @@ const execute = async (
     const message = renderActiveScrims(response.payload);
     await interaction.followUp({
       content: message,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -101,7 +102,7 @@ const execute = async (
     if (error instanceof ESCLConfigError) {
       await interaction.followUp({
         content: "ESCL_JWT が設定されていません。.env を確認してください。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -109,7 +110,7 @@ const execute = async (
     if (error instanceof ESCLAuthError) {
       await interaction.followUp({
         content: "ESCL API の認証に失敗しました。JWT を再設定してください。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -117,7 +118,7 @@ const execute = async (
     if (error instanceof ESCLNetworkError) {
       await interaction.followUp({
         content: `ESCL API への接続に失敗しました: ${message}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -125,7 +126,7 @@ const execute = async (
     if (error instanceof ESCLApiError) {
       await interaction.followUp({
         content: `ESCL API 呼び出しで想定外のエラーが発生しました: ${message}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -136,7 +137,7 @@ const execute = async (
 
     await interaction.followUp({
       content: `想定外のエラーが発生しました: ${message}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 };

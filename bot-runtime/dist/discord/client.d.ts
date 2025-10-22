@@ -23,6 +23,7 @@ export declare class DiscordRuntime {
     private introduceManager;
     private codexFollowUpManager;
     private presenceManager;
+    private permissionMonitor;
     private escl;
     constructor(options: DiscordClientOptions);
     start(): Promise<void>;

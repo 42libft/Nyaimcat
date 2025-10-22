@@ -1,6 +1,7 @@
 import {
   ActionRowBuilder,
   ApplicationCommandOptionChoiceData,
+  MessageFlags,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   ModalBuilder,
@@ -84,7 +85,7 @@ const ensureAccountManager = async (
     await interaction.reply({
       content:
         "ESCL アカウント管理は現在無効です。`ESCL_SECRET_KEY` を設定し、Bot を再起動してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return null;
   }
@@ -100,7 +101,7 @@ const ensureAccountManagerForModal = async (
     await interaction.reply({
       content:
         "ESCL アカウント管理は現在無効です。`ESCL_SECRET_KEY` を設定し、Bot を再起動してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return null;
   }
@@ -207,7 +208,7 @@ const handleRegisterCommand = async (
     logger.error("ESCL アカウント登録モーダルの表示に失敗しました", { message });
     await interaction.reply({
       content: "モーダルの表示に失敗しました。後ほど再度お試しください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 };
@@ -221,7 +222,7 @@ const handleListCommand = async (
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const { accounts } = await manager.listAccounts(interaction.user.id);
@@ -282,7 +283,7 @@ const handleRemoveCommand = async (
 
   const accountId = interaction.options.getString(ACCOUNT_OPTION_NAME, true);
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const result = await manager.removeAccount({
@@ -348,7 +349,7 @@ const handleSetDefaultCommand = async (
 
   const accountId = interaction.options.getString(ACCOUNT_OPTION_NAME, true);
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     await manager.setDefaultAccount({
@@ -394,7 +395,7 @@ const handleAccountCommand = async (
   if (subcommandGroup !== SUBCOMMAND_GROUP) {
     await interaction.reply({
       content: "不明なサブコマンドです。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -417,7 +418,7 @@ const handleAccountCommand = async (
     default:
       await interaction.reply({
         content: "不明なサブコマンドです。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
   }
 };
@@ -470,7 +471,7 @@ export const handleEsclAccountModalSubmit = async (
     return true;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const labelRaw = interaction.fields.getTextInputValue(LABEL_INPUT_ID);

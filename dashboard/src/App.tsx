@@ -40,8 +40,13 @@ import {
 import { deepClone, defaultGitHubSettings, stateToConfig, toYaml } from './utils';
 import { createConfigPullRequest } from './github';
 
+const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const fallbackApiBaseUrl = 'http://localhost:8000/api';
+const defaultApiBaseUrl =
+  typeof envApiBaseUrl === 'string' && envApiBaseUrl.trim() !== '' ? envApiBaseUrl : fallbackApiBaseUrl;
+
 const defaultAuth: AuthSettings = {
-  apiBaseUrl: 'http://localhost:8080/api',
+  apiBaseUrl: defaultApiBaseUrl,
   token: '',
   clientId: 'pages-dashboard',
   guildId: '',
@@ -105,6 +110,8 @@ const App = () => {
   const [logsLoading, setLogsLoading] = useState(false);
 
   const api = useMemo(() => (auth?.token ? new DashboardApi(auth) : null), [auth]);
+  const originalYaml = useMemo(() => toYaml(stateToConfig(originalState)), [originalState]);
+  const updatedYaml = useMemo(() => toYaml(stateToConfig(draftState)), [draftState]);
 
   const handleLogin = (settings: AuthSettings) => {
     setAuth(settings);
@@ -378,9 +385,6 @@ const App = () => {
       }
     );
   };
-
-  const originalYaml = useMemo(() => toYaml(stateToConfig(originalState)), [originalState]);
-  const updatedYaml = useMemo(() => toYaml(stateToConfig(draftState)), [draftState]);
 
   const welcomeDraft = draftState.welcome ?? createDefaultWelcome();
   const guidelineDraft = draftState.guideline ?? createDefaultGuideline();

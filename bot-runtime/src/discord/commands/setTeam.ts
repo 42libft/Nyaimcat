@@ -1,4 +1,8 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import {
+  MessageFlags,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+} from "discord.js";
 
 import { TeamStoreError } from "../../escl/teamStore";
 import { logger } from "../../utils/logger";
@@ -24,7 +28,7 @@ const saveTeamId = async (
   if (!Number.isInteger(teamId) || teamId <= 0) {
     await interaction.reply({
       content: "team_id は正の整数で指定してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -45,13 +49,13 @@ const saveTeamId = async (
       await interaction.followUp({
         content:
           "teamId の保存に失敗しました。ファイル権限を確認して後ほど再試行してください。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } else {
       await interaction.reply({
         content:
           "teamId の保存に失敗しました。ファイル権限を確認して後ほど再試行してください。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -70,7 +74,7 @@ const saveTeamId = async (
 
   await interaction.reply({
     content: `teamId=${teamId} を登録しました。`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 
   await context.auditLogger.log({

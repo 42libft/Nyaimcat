@@ -1,4 +1,8 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import {
+  MessageFlags,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+} from "discord.js";
 
 import type { CommandExecuteContext, SlashCommandModule } from "./types";
 
@@ -14,7 +18,7 @@ const execute = async (
   if (!interaction.guild) {
     await interaction.reply({
       content: "ギルド内でのみ使用できます。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }

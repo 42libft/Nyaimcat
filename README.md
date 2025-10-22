@@ -71,7 +71,7 @@ ESCL 応募ワークフローは Node.js ランタイム（`bot-runtime/`）へ�
 export API_AUTH_TOKEN=your-management-token
 python -m src.nyaimlab
 ```
-- デフォルトでは `0.0.0.0:8080` で起動します。`API_HOST` / `API_PORT` で変更可能です。
+- デフォルトでは `0.0.0.0:8000` で起動します。`API_HOST` / `API_PORT` で変更可能です。
 - すべてのリクエストに以下のヘッダーが必須です。
   - `Authorization: Bearer <API_AUTH_TOKEN>`
   - `x-client`: ダッシュボード識別子
@@ -101,7 +101,8 @@ npm install
 npm run dev
 ```
 - 開発サーバーは `http://localhost:5173` で起動します。
-- ログインフォームで API ベース URL（例: `http://localhost:8080/api`）、管理トークン、ギルド ID、クライアント ID、ユーザー ID を入力します。
+- ログインフォームで API ベース URL（例: `http://localhost:8000/api`）、管理トークン、ギルド ID、クライアント ID、ユーザー ID を入力します。
+- フロントエンドからの既定の接続先は `VITE_API_BASE_URL` で上書きできます（未設定時は `http://localhost:8000/api`）。
 - 状態を読み込み、各タブ（Overview / Welcome / Guideline / Verify / Roles / Introduce / Scrims / Settings / Audit Logs / YAML & PR）で編集とプレビューが可能です。
 - YAML タブでは GitHub 個人トークンを用いて Pull Request を作成できます。ダッシュボードの設定はブラウザの `localStorage` のみに保存されます。
 

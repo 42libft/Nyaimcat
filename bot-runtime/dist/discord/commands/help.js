@@ -60,6 +60,7 @@ const helpCategoryConfigs = [
         lines: [
             "- `/ping` で Bot の WebSocket 応答時間を確認し、ネットワーク状態の手軽なチェックに使えます。",
             "- `/status` でメモリ使用量や Codex 実行キューの統計、ヘルスチェック警告をまとめて確認できます。",
+            "- `/health` で現在アクティブなヘルス警告の詳細を一覧できます。",
             "- `/help` でこのヘルプを再表示し、`command` / `category` オプションで個別のトピックにアクセスできます。",
         ],
     },
@@ -127,6 +128,17 @@ const helpCommandConfigs = [
         notes: [
             "稼働時間・WebSocket Ping・メモリ使用量に加え、Codex 実行キューの最新履歴を表示します。",
             "`collectHealthIssueSummary` による警告一覧で設定漏れや連携失敗を早期検知できます。",
+        ],
+    },
+    {
+        key: "health",
+        choiceName: "/health",
+        title: "**/health**",
+        summary: "現在のヘルス警告を詳細に表示します。",
+        usage: ["`/health`"],
+        notes: [
+            "ヘルスレジストリ内のアクティブな警告をレベル・検知時刻・詳細情報つきで一覧できます。",
+            "警告が存在しない場合は正常稼働のメッセージを表示します。履歴ファイルは `tasks/runs/health/` に保存されます。",
         ],
     },
     {

@@ -12,6 +12,7 @@ const client_1 = require("./discord/client");
 const checks_1 = require("./health/checks");
 const alerts_1 = require("./health/alerts");
 const rehydrate_1 = require("./health/rehydrate");
+const heartbeat_1 = require("./health/heartbeat");
 const loadEnvFiles = () => {
     const candidates = [
         path_1.default.resolve(process.cwd(), ".env"),
@@ -66,6 +67,8 @@ const bootstrap = async () => {
     });
     await (0, rehydrate_1.rehydrateHealthRegistryFromHistory)();
     (0, alerts_1.initializeHealthAlerts)();
+    const heartbeat = new heartbeat_1.HealthHeartbeat();
+    heartbeat.start();
     (0, checks_1.evaluateAuditLogChannel)(activeConfig);
     (0, checks_1.evaluateCodexNotificationSettings)();
     (0, checks_1.evaluateDiscordActionsHealth)();

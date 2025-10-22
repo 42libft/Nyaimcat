@@ -32,7 +32,7 @@ const execute = async (
   const parentUrl = interaction.options.getString("parent_url", true);
   const group = interaction.options.getString("group");
 
-  await interaction.deferReply({ ephemeral: false });
+  await interaction.deferReply();
 
   try {
     const result = await runEsclCsv(parentUrl, group);

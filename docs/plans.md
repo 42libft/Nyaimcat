@@ -12,6 +12,7 @@
 - Verify ロール剥奪検知に伴う監査ログ (`verify.revoke`) と退会ハンドリング (`member.leave`) を追加し、監査線が整備された。
 - Python ESCL CLI を Node.js ランタイムに統合し、`/version` `/escl_from_parent_csv` `/escl_from_parent_xlsx` を Slash コマンドとして公開。
 - `/feedback` コマンドを追加し、Discord からのバグ報告／アイデアをローカル Markdown として保存・監査ログ送信する導線を構築。
+- `/health` Slash コマンドと PermissionMonitor / HealthHeartbeat を実装し、起動時の権限検証・チャンネル権限不足検知・ロール階層監視・定期ヘルス通知を整備した。
 - ダッシュボードの Scrims タブから `dry_run`／`run` を API に投げ、監査 ID を取得できるようにした。
 - README を Codex 連携コマンドに合わせて刷新し、`/help` Slash コマンドで主要な操作ガイドを即時参照できるようにした。
 - `/help` コマンドにカテゴリ／コマンド指定オプションを追加し、サーバー基本ガイドから個別機能の詳細まで自己完結できるヘルプを提供。
@@ -29,9 +30,8 @@
 2. **Introduce モーダル拡張とモデレーション強化**  
    - セレクト項目／NG ワード／添付ファイル可否などの要件を確定し、Bot・API・フロントで共通スキーマを用意する。  
    - Embed 生成・バリデーション・監査ログを拡張し、投稿失敗時の再送フローを整備する。
-3. **運用ヘルスチェックと権限監視の仕上げ**  
-   - 起動時の権限／ロール検証に加えて、`/health` Slash コマンド（もしくは REST）を実装し、監視チャンネルへの定期通知と `healthRegistry` 永続化を連動させる。  
-   - 既存の PresenceManager・ヘルス履歴再構築を活用し、告知フローと Runbook を整理する。
+3. ~~**運用ヘルスチェックと権限監視の仕上げ**~~（完了）  
+   - PermissionMonitor ＋ `/health` コマンド＋ HealthHeartbeat を導入済み。Runbook 更新のみ別タスクで追う。
 4. **設定バリデーションとホットリロード安全性の向上**  
    - Bot 側での設定 JSON/YAML スキーマ検証と差分ロールバックを用意し、異常検知時は監査ログとヘルス警告を発火する。  
    - Dash/API でも必須項目チェックと UI エラー提示を強化し、リリース前検証を自動化する。
@@ -42,6 +42,7 @@
 ### 完了済みの短期課題
 - **ESCL スクリム応募機能の Node.js 移植完了**（応募ジョブ永続化・復元、Python Slash コマンド無効化まで実施済み）
 - **ESCL 認証管理の多アカウント対応**（暗号化 CredentialStore・AccountManager・`/escl account` コマンド・`entry` 系オートコンプリートを実装済み）
+- **運用ヘルスチェックと権限監視の強化**（PermissionMonitor による起動時権限検証、`/health` コマンド、HealthHeartbeat の定期アラート送信を導入）
 
 ## 中期課題（バックエンド・フロントエンド）
 - **管理 API の永続化と監査拡張**  
@@ -76,12 +77,16 @@
 - Bot ヘルスチェックは運用の即効性が高いため、優先課題として開発スプリント初期での着手を想定する。
 - PresenceManager でヘルスレジストリを購読し、🟢/⚠️/🛑 のカスタムステータスと `online/idle/dnd` 切り替えで利用可否を即時表示する実装を追加。`npm test` で通知系ユニットテストを含め確認済み。
 - ヘルス履歴から起動時に未解消の警告を再構築して `healthRegistry` へ復元し、再起動後でも警告解消時に Discord 通知が届くようにした。
+- PermissionMonitor でギルド権限（ManageRoles）、チャンネル権限不足、ロール階層の問題を検知し `healthRegistry` に反映。HealthHeartbeat が継続警告を定期通知することで Runbook の確認漏れを防ぐ。
 - `bot-runtime` の起動時にリポジトリ直下の `.env` も自動探索するようにし、開発環境での環境変数設定漏れを防止。
 - ルート直下の ESCL 関連ユーティリティ／ダンプを整理し、`scripts/escl/` と `data/escl/` 配下へ移動済み。CLI 既定パスも新構成に合わせて更新した。
 - Codex ワークコマンドの肥大化を解消するため、`bot-runtime/src/discord/commands/work/` 配下に開始・キャンセル・ステータス・選択 UI を分割し共通整形ロジックも切り出した。次段階では通知処理（`bot-runtime/src/codex/notifications.ts`）のモジュール化検討を視野に入れる。
 - Codex 通知処理を `bot-runtime/src/codex/notifications/` 配下に分割し、結果通知・失敗通知・キャンセル通知をそれぞれのモジュールに整理。共通フォーマッタや DiscordActions 初期化のハンドリングを共有化したため、今後の通知チャネル拡張や差分ロギングの追加が容易になった。
 - Python ESCL Bot の `/entry` コマンドを `src/esclbot/commands/entry_handler.py` に切り出し、進捗通知／teamId 解決／スレッド生成をそれぞれメソッド化。CLI と共通利用する集計・ファイル名ロジックも `src/esclbot/reports.py` へ集約し、従来の `_safe_name` 共有や巨大関数のスパゲッティ化を解消した。
 - 2025-10-18 時点で Python Bot から `/set-team` `/list-active` `/entry` `/entry-now` を撤去し、応募系 Slash コマンドは Node.js 側のみで提供する構成へ移行済み。
+- Discord.js v14 系で非推奨となった `ephemeral` オプションを排し、Slash Command の応答／保留は `MessageFlags.Ephemeral` へ統一。`/list-active` など一部の即時応答も整理し、警告ログの発生を抑制した。
+- PermissionMonitor のギルド取得失敗ログを重複抑制し、`Unknown Guild` 応答時には設定 ID や Bot 参加状況の再確認を促す詳細理由をヘルス警告へ記録するよう改善した。
+- HealthHeartbeat が同一内容を短時間に繰り返し送信しないよう抑制し、既定で 6 時間は同じ警告メッセージを再投稿しない設計に変更した（`HEALTH_HEARTBEAT_REPEAT_SUPPRESS_MS` で調整可）。
 
 ## ESCL スクリム自動エントリー Bot v2
 

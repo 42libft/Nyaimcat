@@ -1,4 +1,8 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import {
+  MessageFlags,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+} from "discord.js";
 
 import type { CommandExecuteContext, SlashCommandModule } from "./types";
 import { runEsclVersion } from "../../utils/esclCli";
@@ -15,7 +19,7 @@ const execute = async (
   interaction: ChatInputCommandInteraction,
   _context: CommandExecuteContext
 ) => {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const pythonVersion = await runEsclVersion();

@@ -18,6 +18,7 @@ import { listActiveCommand } from "./listActive";
 import { entryCommand } from "./entry";
 import { entryNowCommand } from "./entryNow";
 import { esclAccountCommand } from "./esclAccount";
+import { healthCommand } from "./health";
 
 export const commandModules: SlashCommandModule[] = [
   helpCommand,
@@ -37,6 +38,7 @@ export const commandModules: SlashCommandModule[] = [
   taskCommand,
   workCommand,
   statusCommand,
+  healthCommand,
 ];
 
 export const buildCommandCollection = () => {

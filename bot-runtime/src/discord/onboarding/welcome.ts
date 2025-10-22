@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   EmbedBuilder,
   GuildMember,
+  MessageFlags,
   type MessageActionRowComponentBuilder,
   type MessageCreateOptions,
 } from "discord.js";
@@ -159,13 +160,13 @@ export const createRolesJumpResponse = (
   if (!rolesChannelId) {
     return {
       content: "ロールチャンネルが設定されていません。運営にお問い合わせください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     } as const;
   }
 
   return {
     content: `ロールの設定はこちらをご確認ください → <#${rolesChannelId}>`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   } as const;
 };
 

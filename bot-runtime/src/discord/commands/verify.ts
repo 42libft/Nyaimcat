@@ -2,6 +2,7 @@ import {
   ChannelType,
   GuildMember,
   PermissionFlagsBits,
+  MessageFlags,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
@@ -74,7 +75,7 @@ const handlePost = async (
   if (!context.config.verify) {
     await interaction.reply({
       content: "verify設定が存在しません。ダッシュボードから保存してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -82,14 +83,14 @@ const handlePost = async (
   if (!(await hasManagePermission(interaction, context))) {
     await interaction.reply({
       content: "この操作を実行する権限が不足しています。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
   const channel = interaction.options.getChannel("channel");
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const result = await context.verifyManager.publish({
@@ -124,7 +125,7 @@ const execute = async (
   if (!interaction.guild) {
     await interaction.reply({
       content: "ギルド内でのみ使用してください。",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -138,7 +139,7 @@ const execute = async (
 
   await interaction.reply({
     content: "未対応のサブコマンドです。",
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 };
 

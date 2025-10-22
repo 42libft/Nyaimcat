@@ -6,6 +6,7 @@ import {
   Client,
   GuildMember,
   GuildTextBasedChannel,
+  MessageFlags,
   Message,
   MessageReaction,
   PartialMessageReaction,
@@ -201,7 +202,7 @@ export class RolesPanelManager {
     if (!rolesConfig || rolesConfig.style !== "buttons") {
       await interaction.reply({
         content: "現在ボタン形式のロールパネルは有効化されていません。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -209,7 +210,7 @@ export class RolesPanelManager {
     if (!interaction.guild) {
       await interaction.reply({
         content: "ギルド内でのみ利用できます。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -222,7 +223,7 @@ export class RolesPanelManager {
     if (!role) {
       await interaction.reply({
         content: "指定されたロールは現在選択できません。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -242,7 +243,7 @@ export class RolesPanelManager {
         });
         await interaction.reply({
           content: `ロール <@&${roleId}> を外しました。`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await this.updateMemberRole(member, roleId, true, {
@@ -251,14 +252,14 @@ export class RolesPanelManager {
         });
         await interaction.reply({
           content: `ロール <@&${roleId}> を付与しました。`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await interaction.reply({
         content: `ロールの更新に失敗しました: ${message}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
@@ -273,7 +274,7 @@ export class RolesPanelManager {
     if (!rolesConfig || rolesConfig.style !== "select") {
       await interaction.reply({
         content: "現在セレクト形式のロールパネルは有効化されていません。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -281,7 +282,7 @@ export class RolesPanelManager {
     if (!interaction.guild) {
       await interaction.reply({
         content: "ギルド内でのみ利用できます。",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -307,7 +308,7 @@ export class RolesPanelManager {
       }
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const results: string[] = [];
 

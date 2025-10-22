@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction } from "discord.js";
+import { MessageFlags, type ChatInputCommandInteraction } from "discord.js";
 
 import type { CommandExecuteContext } from "../types";
 import { codexWorkManager } from "../../../codex/workManager";
@@ -9,7 +9,7 @@ export const handleWorkStatus = async (
   interaction: ChatInputCommandInteraction,
   context: CommandExecuteContext
 ) => {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const queueId = interaction.options.getString("queue_id")?.trim() ?? null;
 
