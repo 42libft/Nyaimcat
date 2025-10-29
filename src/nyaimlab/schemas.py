@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import (
     AnyHttpUrl,
@@ -58,6 +58,163 @@ class WelcomeButton(BaseModel):
     )
 
 
+class WelcomeMode(str, Enum):
+    """Supported presentation modes for the welcome message."""
+
+    EMBED = "embed"
+    CARD = "card"
+
+
+class WelcomeCardConfig(BaseModel):
+    """Card generation settings when using the canvas-based welcome mode."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    background_image: str = Field(
+        ...,
+        min_length=1,
+        description="Path or URL to the background image rendered behind the welcome card.",
+    )
+    font_path: Optional[str] = Field(
+        default=None,
+        description="Optional font file path used when drawing text onto the welcome card.",
+    )
+    title_template: str = Field(
+        default="Welcome to {{guild_name}}",
+        max_length=160,
+        description="Primary heading rendered under the avatar. Supports template variables.",
+    )
+    subtitle_template: str = Field(
+        default="Member #{{member_index}}",
+        max_length=160,
+        description="Secondary heading rendered under the title. Supports template variables.",
+    )
+    body_template: Optional[str] = Field(
+        default="We are glad to have you here, {{username}}!",
+        max_length=400,
+        description="Optional body text rendered under the subtitle. Supports template variables.",
+    )
+    text_color: str = Field(
+        default="#ffffff",
+        min_length=1,
+        description="Primary text color. Accepts hex or CSS color strings.",
+    )
+    accent_color: str = Field(
+        default="#fee75c",
+        min_length=1,
+        description="Accent color used for highlighted text such as the member index.",
+    )
+    overlay_color: Optional[str] = Field(
+        default="rgba(0, 0, 0, 0.45)",
+        description="Optional overlay color applied on top of the background image.",
+    )
+    avatar_border_color: Optional[str] = Field(
+        default=None,
+        description="Optional border color drawn around the circular avatar.",
+    )
+    font_family: Optional[str] = Field(
+        default=None,
+        max_length=120,
+        description="Optional CSS font-family used when rendering the welcome card.",
+    )
+    avatar_offset_x: int = Field(
+        default=0,
+        ge=-512,
+        le=512,
+        description="Horizontal offset applied to the avatar centre relative to the canvas midpoint.",
+    )
+    avatar_offset_y: int = Field(
+        default=-96,
+        ge=-576,
+        le=576,
+        description="Vertical offset applied to the avatar centre relative to the canvas midpoint.",
+    )
+    title_offset_x: int = Field(
+        default=0,
+        ge=-512,
+        le=512,
+        description="Horizontal offset applied to the title text baseline relative to the canvas midpoint.",
+    )
+    title_offset_y: int = Field(
+        default=20,
+        ge=-200,
+        le=400,
+        description="Vertical spacing between the avatar bottom and the title.",
+    )
+    title_font_size: int = Field(
+        default=64,
+        ge=12,
+        le=120,
+        description="Base font size (px) for the title text.",
+    )
+    subtitle_offset_x: int = Field(
+        default=0,
+        ge=-512,
+        le=512,
+        description="Horizontal offset applied to the subtitle text relative to the canvas midpoint.",
+    )
+    subtitle_offset_y: int = Field(
+        default=50,
+        ge=-200,
+        le=400,
+        description="Vertical spacing between the title and subtitle.",
+    )
+    subtitle_font_size: int = Field(
+        default=44,
+        ge=12,
+        le=100,
+        description="Base font size (px) for the subtitle text.",
+    )
+    body_offset_x: int = Field(
+        default=0,
+        ge=-512,
+        le=512,
+        description="Horizontal offset applied to the body text block relative to the canvas midpoint.",
+    )
+    body_offset_y: int = Field(
+        default=50,
+        ge=-400,
+        le=600,
+        description="Vertical spacing between the subtitle and the start of the body text.",
+    )
+    body_font_size: int = Field(
+        default=28,
+        ge=12,
+        le=80,
+        description="Base font size (px) for the body text.",
+    )
+
+    @field_validator("font_path", "font_family", mode="before")
+    @classmethod
+    def _normalize_optional_font_fields(
+        cls, value: Any
+    ) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
+        raise TypeError("font_path and font_family must be strings.")
+
+
+class WelcomePreviewMember(BaseModel):
+    """Sample member information used when generating previews."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(default="PreviewUser", max_length=64)
+    display_name: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Optional display name if differs from username.",
+    )
+    avatar_url: Optional[str] = Field(
+        default=None,
+        description="Optional avatar URL used when rendering the preview.",
+    )
+    member_index: PositiveInt = Field(default=128)
+
+
 class WelcomeConfig(BaseModel):
     """Configuration payload for the welcome embed flow."""
 
@@ -72,6 +229,12 @@ class WelcomeConfig(BaseModel):
         default="あなたは **#{member_index}** 人目のメンバーです。",
         description="Description template shown within the embed.",
     )
+    message_template: str = Field(
+        default="{{mention}}",
+        max_length=2000,
+        description="Message content template sent alongside the welcome message.",
+    )
+    mode: WelcomeMode = WelcomeMode.EMBED
     member_index_mode: MemberIndexMode = MemberIndexMode.EXCLUDE_BOTS
     join_field_label: str = Field(default="加入日時", max_length=32)
     join_timezone: Timezone = Timezone.JST
@@ -81,6 +244,50 @@ class WelcomeConfig(BaseModel):
         default=None,
         description="Optional thread name template if follow-up threads are created.",
     )
+    card: Optional[WelcomeCardConfig] = Field(
+        default=None,
+        description="Canvas-based card configuration when mode is set to `card`.",
+    )
+
+
+class WelcomeEmbedPreviewField(BaseModel):
+    """Field representation returned when previewing embed mode."""
+
+    name: str
+    value: str
+
+
+class WelcomeEmbedPreview(BaseModel):
+    """Preview payload for embed mode."""
+
+    title: str
+    description: str
+    footer_text: str
+    fields: List[WelcomeEmbedPreviewField]
+    color: int = 0x5865F2
+    thumbnail_url: Optional[str] = None
+
+
+class WelcomePreview(BaseModel):
+    """Union preview response for embed/card modes."""
+
+    mode: WelcomeMode
+    content: Optional[str] = None
+    embed: Optional[WelcomeEmbedPreview] = None
+    card_base64: Optional[str] = Field(
+        default=None,
+        description="PNG data encoded as base64 when mode is `card`.",
+    )
+
+
+class WelcomePreviewRequest(BaseModel):
+    """Request body for generating welcome message previews."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    config: WelcomeConfig
+    member: WelcomePreviewMember = Field(default_factory=WelcomePreviewMember)
+    guild_name: str = Field(default="Nyaimlab", max_length=100)
 
 
 class GuidelineTemplate(BaseModel):
@@ -132,6 +339,11 @@ class VerifyConfig(BaseModel):
         default=None,
         description="Existing Discord message ID to update in-place if present.",
     )
+    emoji: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Reaction modeで使用するカスタム絵文字。省略時は✅。",
+    )
 
 
 class RoleStyle(str, Enum):
@@ -165,6 +377,10 @@ class RolesConfig(BaseModel):
     channel_id: str
     style: RoleStyle
     roles: List[RoleEntry] = Field(default_factory=list)
+    message_id: Optional[str] = Field(
+        default=None,
+        description="既存メッセージを更新する場合の Discord message ID。",
+    )
     message_content: Optional[str] = Field(
         default=None,
         description="Optional plain-text message that accompanies the controls.",
@@ -326,6 +542,76 @@ class SettingsPayload(BaseModel):
     member_count_strategy: MemberCountStrategy = MemberCountStrategy.HUMAN_ONLY
     api_base_url: Optional[AnyHttpUrl] = Field(default=None)
     show_join_alerts: bool = Field(default=True)
+
+
+class RagMode(str, Enum):
+    HELP = "help"
+    COACH = "coach"
+    CHAT = "chat"
+
+
+class RagPromptsConfig(BaseModel):
+    """Prompt templates used when generating responses per mode."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base: str = Field(
+        ...,
+        description="全モード共通で付与するベースプロンプト。",
+    )
+    help: str = Field(..., description="ヘルプモード専用の追加プロンプト。")
+    coach: str = Field(..., description="コーチモード専用の追加プロンプト。")
+    chat: str = Field(..., description="雑談モード専用の追加プロンプト。")
+
+
+class RagFeelingsConfig(BaseModel):
+    """Emotion and response frequency parameters for the bot."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    excitement: float = Field(default=0.5, ge=0.0, le=1.0)
+    empathy: float = Field(default=0.5, ge=0.0, le=1.0)
+    probability: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=1.0,
+        description="自発発話の基本確率。",
+    )
+    cooldown_minutes: float = Field(
+        default=15.0, ge=0.0, description="自発発話後の待機時間（分）。"
+    )
+    default_mode: RagMode = RagMode.CHAT
+
+
+class RagShortTermConfig(BaseModel):
+    """Short term memory fine-tuning."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    excluded_channels: List[str] = Field(
+        default_factory=list,
+        description="短期記憶から除外するチャンネル ID のリスト。",
+    )
+
+
+class RagConfig(BaseModel):
+    """Top-level configurable properties for the RAG service."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompts: RagPromptsConfig
+    feelings: RagFeelingsConfig = Field(default_factory=RagFeelingsConfig)
+    short_term: RagShortTermConfig = Field(default_factory=RagShortTermConfig)
+
+
+class RagKnowledgeEntry(BaseModel):
+    """Manual knowledge entry that can be persisted to Markdown."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(..., min_length=1, max_length=120)
+    content: str = Field(..., min_length=1)
+    tags: List[str] = Field(default_factory=list)
 
 
 class APIResponse(BaseModel):

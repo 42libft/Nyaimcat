@@ -35,6 +35,9 @@ export const stateToConfig = (state: DashboardState | null): Record<string, unkn
   if (state.settings && Object.keys(state.settings).length > 0) {
     config.settings = state.settings;
   }
+  if (state.rag) {
+    config.rag = state.rag;
+  }
   return config;
 };
 

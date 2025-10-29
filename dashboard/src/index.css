@@ -109,6 +109,12 @@ select {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
 }
 
+.section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .section-card h2 {
   margin-top: 0;
 }

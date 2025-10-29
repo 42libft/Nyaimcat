@@ -13,7 +13,7 @@ const data = new discord_js_1.SlashCommandBuilder()
     .setDescription("稼働中のBotバージョンを表示します");
 const runtimeVersion = package_json_1.default.version;
 const execute = async (interaction, _context) => {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
     try {
         const pythonVersion = await (0, esclCli_1.runEsclVersion)();
         await interaction.editReply({

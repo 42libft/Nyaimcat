@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigWatcher = void 0;
 const crypto_1 = require("crypto");
+const fs_1 = require("fs");
 const logger_1 = require("../utils/logger");
 const diff_1 = require("../utils/diff");
 const loader_1 = require("./loader");
@@ -26,6 +27,8 @@ class ConfigWatcher {
             intervalMs: this.intervalMs,
             path: this.path,
         });
+        this.startFileWatcher();
+        void this.refresh();
         this.timer = setInterval(() => {
             void this.refresh();
         }, this.intervalMs);
@@ -37,6 +40,10 @@ class ConfigWatcher {
         clearInterval(this.timer);
         this.timer = undefined;
         logger_1.logger.info("設定ホットリロード監視を停止しました");
+        if (this.fileWatcher) {
+            this.fileWatcher.close();
+            this.fileWatcher = undefined;
+        }
     }
     onUpdate(listener) {
         this.updateListeners.add(listener);
@@ -105,6 +112,40 @@ class ConfigWatcher {
                     message,
                 });
             }
+        }
+    }
+    startFileWatcher() {
+        if (!this.path) {
+            return;
+        }
+        try {
+            this.fileWatcher?.close();
+            this.fileWatcher = (0, fs_1.watch)(this.path, (eventType) => {
+                if (eventType === "change" || eventType === "rename") {
+                    void this.refresh();
+                }
+                if (eventType === "rename") {
+                    // rename イベント後はファイルウォッチャーが無効になるケースがあるため再構築する
+                    setTimeout(() => this.startFileWatcher(), 0);
+                }
+            });
+            this.fileWatcher.on("error", (error) => {
+                const message = error instanceof Error ? error.message : String(error);
+                logger_1.logger.warn("設定ファイルのファイル監視でエラーが発生しました。ポーリングにフォールバックします", {
+                    path: this.path,
+                    message,
+                });
+                this.fileWatcher?.close();
+                this.fileWatcher = undefined;
+            });
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger_1.logger.warn("設定ファイルの監視を開始できませんでした。ポーリングのみを使用します", {
+                path: this.path,
+                message,
+            });
+            this.fileWatcher = undefined;
         }
     }
 }

@@ -1,1 +1,1 @@
-{"version":3,"file":"help.d.ts","sourceRoot":"","sources":["../../../src/discord/commands/help.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAyB,kBAAkB,EAAE,MAAM,SAAS,CAAC;AAkczE,eAAO,MAAM,WAAW,EAAE,kBAGzB,CAAC"}
+{"version":3,"file":"help.d.ts","sourceRoot":"","sources":["../../../src/discord/commands/help.ts"],"names":[],"mappings":"AAMA,OAAO,KAAK,EAAyB,kBAAkB,EAAE,MAAM,SAAS,CAAC;AAmczE,eAAO,MAAM,WAAW,EAAE,kBAGzB,CAAC"}

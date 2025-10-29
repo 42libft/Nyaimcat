@@ -1,6 +1,7 @@
 export type MemberIndexMode = 'include_bots' | 'exclude_bots';
 export type Timezone = 'UTC' | 'Asia/Tokyo';
 export type WelcomeButtonTarget = 'url' | 'channel';
+export type WelcomeMode = 'embed' | 'card';
 
 export interface WelcomeButton {
   label: string;
@@ -9,16 +10,64 @@ export interface WelcomeButton {
   emoji?: string | null;
 }
 
+export interface WelcomeCardConfig {
+  background_image: string;
+  font_path?: string | null;
+  font_family?: string | null;
+  title_template: string;
+  subtitle_template: string;
+  body_template?: string | null;
+  text_color: string;
+  accent_color: string;
+  overlay_color?: string | null;
+  avatar_border_color?: string | null;
+  avatar_offset_x: number;
+  avatar_offset_y: number;
+  title_offset_x: number;
+  title_offset_y: number;
+  title_font_size: number;
+  subtitle_offset_x: number;
+  subtitle_offset_y: number;
+  subtitle_font_size: number;
+  body_offset_x: number;
+  body_offset_y: number;
+  body_font_size: number;
+}
+
 export interface WelcomeConfig {
   channel_id: string;
   title_template: string;
   description_template: string;
+  message_template: string;
+  mode: WelcomeMode;
   member_index_mode: MemberIndexMode;
   join_field_label: string;
   join_timezone: Timezone;
   buttons: WelcomeButton[];
   footer_text: string;
   thread_name_template?: string | null;
+  card?: WelcomeCardConfig | null;
+}
+
+export interface WelcomeEmbedPreviewField {
+  name: string;
+  value: string;
+}
+
+export interface WelcomeEmbedPreview {
+  title: string;
+  description: string;
+  footer_text: string;
+  fields: WelcomeEmbedPreviewField[];
+  color: number;
+  thumbnail_url?: string | null;
+}
+
+export interface WelcomePreview {
+  mode: WelcomeMode;
+  content?: string | null;
+  embed?: WelcomeEmbedPreview;
+  card_base64?: string | null;
 }
 
 export interface GuidelineTemplate {
@@ -34,6 +83,7 @@ export interface VerifyConfig {
   mode: VerifyMode;
   prompt: string;
   message_id?: string | null;
+  emoji?: string | null;
 }
 
 export type RoleStyle = 'buttons' | 'select' | 'reactions';
@@ -102,6 +152,39 @@ export interface SettingsPayload {
   show_join_alerts: boolean;
 }
 
+export type RagMode = 'help' | 'coach' | 'chat';
+
+export interface RagPromptsConfig {
+  base: string;
+  help: string;
+  coach: string;
+  chat: string;
+}
+
+export interface RagFeelingsConfig {
+  excitement: number;
+  empathy: number;
+  probability: number;
+  cooldown_minutes: number;
+  default_mode: RagMode;
+}
+
+export interface RagShortTermConfig {
+  excluded_channels: string[];
+}
+
+export interface RagConfig {
+  prompts: RagPromptsConfig;
+  feelings: RagFeelingsConfig;
+  short_term: RagShortTermConfig;
+}
+
+export interface RagKnowledgeEntry {
+  title: string;
+  content: string;
+  tags: string[];
+}
+
 export interface DashboardState {
   welcome: WelcomeConfig | null;
   guideline: GuidelineTemplate | null;
@@ -112,6 +195,7 @@ export interface DashboardState {
   introduce_schema: IntroduceSchema;
   scrims: ScrimConfig | null;
   settings: Partial<SettingsPayload>;
+  rag: RagConfig | null;
 }
 
 export interface AuditEntry {

@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from threading import Lock
@@ -21,6 +22,11 @@ from .schemas import (
     GuidelineTestRequest,
     IntroduceConfig,
     IntroduceSchema,
+    RagConfig,
+    RagKnowledgeEntry,
+    RagPromptsConfig,
+    RagFeelingsConfig,
+    RagShortTermConfig,
     RoleEmojiMapRequest,
     RoleRemovalRequest,
     RolesConfig,
@@ -30,6 +36,7 @@ from .schemas import (
     SettingsPayload,
     VerifyConfig,
     WelcomeConfig,
+    WelcomeMode,
 )
 
 
@@ -38,7 +45,51 @@ def _dump_model(model: Optional[BaseModel]) -> Optional[Dict[str, Any]]:
 
     if model is None:
         return None
-    return model.model_dump(mode="python")
+    return model.model_dump(mode="json", exclude_none=True)
+
+
+DEFAULT_RAG_PROMPT_BASE = (
+    "あなたは Nyaimlab Discord サーバーで暮らす中性的な猫のキャラクターボットとして振る舞ってください。"
+    "相手に寄り添い、尊重しながら返答してください。"
+    "ヘルプやアドバイス以外の雑談では、短く自然なチャット文を意識してください。"
+    "絵文字や顔文字は使わないでください。"
+    "自分が AI や ChatGPT であると説明したり、注意書きや免責事項を付けたりしないでください。"
+    "求められない限り長文にならないようにし、1〜2文程度で要点だけを返してください。"
+)
+
+DEFAULT_RAG_PROMPT_HELP = (
+    "あなたは Nyaimlab サーバーの丁寧なヘルプ担当です。"
+    "わかりやすく落ち着いたトーンで、手順や理由を整理して伝えてください。"
+    "語尾は基本的に敬語ですが、たまに柔らかく「〜にゃ」と添えても構いません。"
+    "絵文字や顔文字は使わず、文末は句読点またはにゃ語尾にしてください。"
+)
+
+DEFAULT_RAG_PROMPT_COACH = (
+    "あなたは Aim やゲーム戦略のコーチ役です。"
+    "中性的な猫のキャラクターとして、ポジティブに励ましつつ提案をしてください。"
+    "アドバイスは実践的かつ簡潔にまとめ、語尾は「〜にゃ」「〜にゃー」などを使いつつも行数は短めに保ってください。"
+    "絵文字は使用せず、親しい友達に話す感覚で表現してください。"
+)
+
+DEFAULT_RAG_PROMPT_CHAT = (
+    "一人称は「ボク」、語尾には必ず「〜にゃ」「〜にゃー」「〜にゃ〜」「〜にゃ！」「〜にゃ…」のいずれかを付けてください。"
+    "絵文字は使わず、雑談は1〜2行程度で短く、友達感覚で自然に返答してください。"
+)
+
+
+def default_rag_config() -> RagConfig:
+    """Return the default RAG configuration."""
+
+    return RagConfig(
+        prompts=RagPromptsConfig(
+            base=DEFAULT_RAG_PROMPT_BASE,
+            help=DEFAULT_RAG_PROMPT_HELP,
+            coach=DEFAULT_RAG_PROMPT_COACH,
+            chat=DEFAULT_RAG_PROMPT_CHAT,
+        ),
+        feelings=RagFeelingsConfig(),
+        short_term=RagShortTermConfig(),
+    )
 
 
 @dataclass
@@ -90,6 +141,7 @@ class GuildState:
     introduce_schema: Dict[str, Any] = field(default_factory=lambda: {"fields": []})
     scrims: Optional[Dict[str, Any]] = None
     settings: Dict[str, Any] = field(default_factory=dict)
+    rag: Optional[Dict[str, Any]] = None
 
 
 class Store:
@@ -118,10 +170,11 @@ class Store:
                 "introduce_schema": dict(state.introduce_schema),
                 "scrims": dict(state.scrims) if state.scrims else None,
                 "settings": dict(state.settings),
+                "rag": dict(state.rag) if state.rag else None,
             }
         configured_sections = sum(
             1
-            for key in ("welcome", "guideline", "verify", "roles", "introduce", "scrims")
+            for key in ("welcome", "guideline", "verify", "roles", "introduce", "scrims", "rag")
             if snapshot.get(key)
         )
         entry = self._record_audit(
@@ -170,6 +223,44 @@ class Store:
         return entry
 
     # ------------------------------------------------------------------
+    # Import / export helpers (no audit)
+    # ------------------------------------------------------------------
+    def import_state(self, guild_id: str, snapshot: Dict[str, Any]) -> None:
+        """Bootstrap the in-memory state from an external snapshot without auditing."""
+
+        with self._lock:
+            state = self._ensure_state(guild_id)
+            state.welcome = deepcopy(snapshot.get("welcome"))
+            state.guideline = deepcopy(snapshot.get("guideline"))
+            state.verify = deepcopy(snapshot.get("verify"))
+            state.roles = deepcopy(snapshot.get("roles"))
+            state.role_emoji_map = dict(snapshot.get("role_emoji_map") or {})
+            state.introduce = deepcopy(snapshot.get("introduce"))
+            schema = snapshot.get("introduce_schema") or {"fields": []}
+            state.introduce_schema = deepcopy(schema)
+            state.scrims = deepcopy(snapshot.get("scrims"))
+            state.settings = deepcopy(snapshot.get("settings") or {})
+            state.rag = deepcopy(snapshot.get("rag"))
+
+    def export_state(self, guild_id: str) -> Dict[str, Any]:
+        """Return a deep-copied snapshot of the stored state without recording audit logs."""
+
+        with self._lock:
+            state = self._ensure_state(guild_id)
+            snapshot: Dict[str, Any] = {
+                "welcome": deepcopy(state.welcome),
+                "guideline": deepcopy(state.guideline),
+                "verify": deepcopy(state.verify),
+                "roles": deepcopy(state.roles),
+                "role_emoji_map": dict(state.role_emoji_map),
+                "introduce": deepcopy(state.introduce),
+                "introduce_schema": deepcopy(state.introduce_schema),
+                "scrims": deepcopy(state.scrims),
+                "settings": deepcopy(state.settings),
+            }
+        return snapshot
+
+    # ------------------------------------------------------------------
     # Welcome
     # ------------------------------------------------------------------
     def save_welcome(
@@ -187,6 +278,18 @@ class Store:
             metadata={"channel_id": payload.channel_id},
         )
         return data, entry
+
+    def log_welcome_preview(
+        self, ctx: RequestContext, mode: WelcomeMode
+    ) -> AuditEntry:
+        """Record a preview action for audit history."""
+
+        return self._record_audit(
+            ctx,
+            "welcome.preview",
+            ok=True,
+            payload={"mode": mode.value},
+        )
 
     # ------------------------------------------------------------------
     # Guideline
@@ -379,6 +482,56 @@ class Store:
             payload=data,
         )
         return data, entry
+
+    # ------------------------------------------------------------------
+    # RAG configuration
+    # ------------------------------------------------------------------
+    def get_rag_config(self, ctx: RequestContext) -> tuple[Dict[str, Any], AuditEntry]:
+        with self._lock:
+            state = self._ensure_state(ctx.guild_id)
+            raw_config = state.rag or default_rag_config().model_dump(mode="json")
+
+        config = RagConfig.model_validate(raw_config)
+        entry = self._record_audit(
+            ctx,
+            "rag.config.get",
+            ok=True,
+            payload={"excluded_channels": len(config.short_term.excluded_channels)},
+        )
+        return config.model_dump(mode="json"), entry
+
+    def save_rag_config(
+        self, ctx: RequestContext, payload: RagConfig
+    ) -> tuple[Dict[str, Any], AuditEntry]:
+        data = payload.model_dump(mode="json", exclude_none=True)
+        with self._lock:
+            state = self._ensure_state(ctx.guild_id)
+            state.rag = data
+        entry = self._record_audit(
+            ctx,
+            "rag.config.save",
+            ok=True,
+            payload={"excluded_channels": len(payload.short_term.excluded_channels)},
+        )
+        return data, entry
+
+    def log_rag_knowledge_add(
+        self,
+        ctx: RequestContext,
+        entry: RagKnowledgeEntry,
+        *,
+        path: str,
+    ) -> AuditEntry:
+        return self._record_audit(
+            ctx,
+            "rag.knowledge.add",
+            ok=True,
+            payload={
+                "title": entry.title,
+                "tags": entry.tags,
+                "path": path,
+            },
+        )
 
     def run_scrim(
         self, ctx: RequestContext, payload: ScrimRunRequest

@@ -4,9 +4,10 @@ import { AuthSettings } from '../types';
 interface Props {
   initial: AuthSettings;
   onSubmit: (settings: AuthSettings) => void;
+  error?: string | null;
 }
 
-const AuthForm = ({ initial, onSubmit }: Props) => {
+const AuthForm = ({ initial, onSubmit, error }: Props) => {
   const [form, setForm] = useState<AuthSettings>(initial);
 
   const handleChange = (field: keyof AuthSettings) => (event: FormEvent<HTMLInputElement>) => {
@@ -24,6 +25,7 @@ const AuthForm = ({ initial, onSubmit }: Props) => {
       <form className="section-card" style={{ maxWidth: 420, width: '100%' }} onSubmit={handleSubmit}>
         <h1 style={{ marginTop: 0 }}>Nyaimlab 管理ダッシュボード</h1>
         <p className="hint">API 接続情報を入力してください。</p>
+        {error ? <div className="status-bar error">{error}</div> : null}
         <div className="form-grid">
           <div className="field">
             <label htmlFor="apiBaseUrl">API Base URL</label>

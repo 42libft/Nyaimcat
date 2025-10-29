@@ -19,7 +19,7 @@ data.addStringOption((option) => option
 const execute = async (interaction, _context) => {
     const parentUrl = interaction.options.getString("parent_url", true);
     const group = interaction.options.getString("group");
-    await interaction.deferReply({ ephemeral: false });
+    await interaction.deferReply();
     try {
         const result = await (0, esclCli_1.runEsclXlsx)(parentUrl, group);
         const file = new discord_js_1.AttachmentBuilder(result.buffer, {

@@ -5,6 +5,7 @@ import type { AuditLogger } from "../auditLogger";
 import type { VerifyManager } from "../verify/manager";
 import type { RolesPanelManager } from "../roles/manager";
 import type { IntroduceManager } from "../introduce/manager";
+import type { RagClient } from "../../rag/client";
 export type CommandExecuteContext = {
     config: BotConfig;
     client: Client;
@@ -13,6 +14,7 @@ export type CommandExecuteContext = {
     rolesManager: RolesPanelManager;
     introduceManager: IntroduceManager;
     escl: EsclEnvironment;
+    ragClient: RagClient;
 };
 export type SlashCommandModule = {
     data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder | SlashCommandOptionsOnlyBuilder;

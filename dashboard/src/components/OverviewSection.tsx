@@ -14,6 +14,7 @@ const OverviewSection = ({ state, onRefresh, lastAuditId }: Props) => {
     { key: 'roles', label: 'Role Distribution', configured: Boolean(state?.roles) },
     { key: 'introduce', label: 'Introduce Command', configured: Boolean(state?.introduce_schema.fields.length) },
     { key: 'scrims', label: 'Scrim Helper', configured: Boolean(state?.scrims) },
+    { key: 'rag', label: 'RAG Service', configured: Boolean(state?.rag) },
     { key: 'settings', label: 'Shared Settings', configured: Boolean(state?.settings && Object.keys(state.settings).length) },
   ];
 
@@ -43,6 +44,11 @@ const OverviewSection = ({ state, onRefresh, lastAuditId }: Props) => {
             ) : null}
             {section.key === 'introduce' && state?.introduce ? (
               <p className="hint">投稿先: <code>{state.introduce.channel_id}</code></p>
+            ) : null}
+            {section.key === 'rag' && state?.rag ? (
+              <p className="hint">
+                除外チャンネル: {state.rag.short_term.excluded_channels.length} 件 / 既定モード: {state.rag.feelings.default_mode}
+              </p>
             ) : null}
           </div>
         ))}

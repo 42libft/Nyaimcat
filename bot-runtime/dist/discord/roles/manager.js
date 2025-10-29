@@ -124,14 +124,14 @@ class RolesPanelManager {
         if (!rolesConfig || rolesConfig.style !== "buttons") {
             await interaction.reply({
                 content: "現在ボタン形式のロールパネルは有効化されていません。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
         if (!interaction.guild) {
             await interaction.reply({
                 content: "ギルド内でのみ利用できます。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
@@ -140,7 +140,7 @@ class RolesPanelManager {
         if (!role) {
             await interaction.reply({
                 content: "指定されたロールは現在選択できません。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
@@ -156,7 +156,7 @@ class RolesPanelManager {
                 });
                 await interaction.reply({
                     content: `ロール <@&${roleId}> を外しました。`,
-                    ephemeral: true,
+                    flags: discord_js_1.MessageFlags.Ephemeral,
                 });
             }
             else {
@@ -166,7 +166,7 @@ class RolesPanelManager {
                 });
                 await interaction.reply({
                     content: `ロール <@&${roleId}> を付与しました。`,
-                    ephemeral: true,
+                    flags: discord_js_1.MessageFlags.Ephemeral,
                 });
             }
         }
@@ -174,7 +174,7 @@ class RolesPanelManager {
             const message = error instanceof Error ? error.message : String(error);
             await interaction.reply({
                 content: `ロールの更新に失敗しました: ${message}`,
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
         }
     }
@@ -186,14 +186,14 @@ class RolesPanelManager {
         if (!rolesConfig || rolesConfig.style !== "select") {
             await interaction.reply({
                 content: "現在セレクト形式のロールパネルは有効化されていません。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
         if (!interaction.guild) {
             await interaction.reply({
                 content: "ギルド内でのみ利用できます。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return;
         }
@@ -214,7 +214,7 @@ class RolesPanelManager {
                 remove.push(entry.role_id);
             }
         }
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         const results = [];
         for (const roleId of add) {
             try {

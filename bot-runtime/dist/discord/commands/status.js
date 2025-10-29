@@ -99,7 +99,7 @@ const data = new discord_js_1.SlashCommandBuilder()
     .setName("status")
     .setDescription("Bot と Codex 連携の稼働状況を表示します");
 const execute = async (interaction, context) => {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
     const uptimeMs = typeof context.client.uptime === "number"
         ? context.client.uptime
         : process.uptime() * 1000;

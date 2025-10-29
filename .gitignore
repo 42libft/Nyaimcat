@@ -15,7 +15,15 @@ bot-runtime/dist/
 
 # Venv
 .venv/
+.venv-rag/
 venv/
+
+# Runtime artifacts
+.runtime/
+
+# Data
+data/chroma/*
+!data/chroma/.gitkeep
 
 # OS
 .DS_Store

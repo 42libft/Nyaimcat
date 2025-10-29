@@ -4,6 +4,7 @@ exports.OnboardingManager = void 0;
 const discord_js_1 = require("discord.js");
 const logger_1 = require("../../utils/logger");
 const welcome_1 = require("./welcome");
+const templateHelpers_1 = require("./templateHelpers");
 const DM_DISABLED_CODES = new Set([50007]);
 class OnboardingManager {
     constructor(client, auditLogger, config) {
@@ -52,7 +53,7 @@ class OnboardingManager {
         }
         const targetChannel = channel;
         const memberIndex = await this.computeMemberIndex(member);
-        const messageOptions = (0, welcome_1.buildWelcomeMessage)({
+        const messageOptions = await (0, welcome_1.buildWelcomeMessage)({
             member,
             config: this.config,
             memberIndex,
@@ -121,7 +122,7 @@ class OnboardingManager {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.reply({
                     content: "内部エラーにより案内を表示できませんでした。",
-                    ephemeral: true,
+                    flags: discord_js_1.MessageFlags.Ephemeral,
                 });
             }
             await this.auditLogger.log({
@@ -136,7 +137,11 @@ class OnboardingManager {
         }
     }
     async computeMemberIndex(member) {
-        if (this.config.features.countBotsInMemberCount) {
+        const mode = this.config.welcome?.member_index_mode ??
+            (this.config.features.countBotsInMemberCount
+                ? "include_bots"
+                : "exclude_bots");
+        if (mode === "include_bots") {
             return member.guild.memberCount;
         }
         try {
@@ -197,7 +202,7 @@ class OnboardingManager {
         const fallbackMessage = (0, welcome_1.buildDmFallbackMessage)(member, this.config, memberIndex);
         try {
             const thread = await message.startThread({
-                name: this.buildThreadName(member),
+                name: this.buildThreadName(member, memberIndex),
                 autoArchiveDuration: 1440,
             });
             await thread.send({ content: fallbackMessage });
@@ -226,7 +231,25 @@ class OnboardingManager {
             });
         }
     }
-    buildThreadName(member) {
+    buildThreadName(member, memberIndex) {
+        const template = this.config.welcome?.thread_name_template;
+        if (template) {
+            const rolesChannelId = this.config.onboarding.rolesChannelId ?? this.config.channels.rolesPanel;
+            const values = (0, templateHelpers_1.createTemplateValues)({
+                username: member.user.username ?? member.displayName,
+                displayName: member.displayName,
+                mention: member.toString(),
+                guildName: member.guild.name,
+                memberIndex,
+                rolesChannelId,
+                guideUrl: this.config.onboarding.guideUrl,
+                staffRoleIds: this.config.roleAssignments?.staffRoleIds,
+            });
+            const resolved = (0, templateHelpers_1.fillTemplate)(template, values).trim();
+            if (resolved) {
+                return resolved.length > 90 ? `${resolved.slice(0, 87)}...` : resolved;
+            }
+        }
         const base = `${member.displayName}-onboarding`;
         return base.length > 90 ? `${base.slice(0, 87)}...` : base;
     }

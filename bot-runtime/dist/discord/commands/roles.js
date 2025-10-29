@@ -47,11 +47,11 @@ const handlePost = async (interaction, context) => {
     if (!context.config.roles) {
         await interaction.reply({
             content: "ロールパネルの設定が存在しません。ダッシュボードから保存してください。",
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
         return;
     }
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
     if (!(await hasManagePermission(interaction, context))) {
         await interaction.editReply({
             content: "この操作を実行する権限が不足しています。",
@@ -85,7 +85,7 @@ const execute = async (interaction, context) => {
     if (!interaction.guild) {
         await interaction.reply({
             content: "ギルド内でのみ使用してください。",
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
         return;
     }
@@ -96,7 +96,7 @@ const execute = async (interaction, context) => {
     }
     await interaction.reply({
         content: "未対応のサブコマンドです。",
-        ephemeral: true,
+        flags: discord_js_1.MessageFlags.Ephemeral,
     });
 };
 exports.rolesCommand = {

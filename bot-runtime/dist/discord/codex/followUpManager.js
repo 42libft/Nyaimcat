@@ -89,7 +89,7 @@ class CodexFollowUpManager {
         if (!context) {
             await interaction.reply({
                 content: "フォローアップ対象の実行結果を取得できませんでした。しばらくしてから再度お試しください。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return true;
         }
@@ -140,7 +140,7 @@ class CodexFollowUpManager {
         if (interaction.user.id !== requesterId) {
             await interaction.reply({
                 content: "このモーダルはリクエストしたユーザーのみが送信できます。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return true;
         }
@@ -151,7 +151,7 @@ class CodexFollowUpManager {
         if (!instructions) {
             await interaction.reply({
                 content: "追加依頼内容が入力されていません。内容を入力して再度送信してください。",
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             });
             return true;
         }

@@ -19,6 +19,7 @@ import {
   createRolesJumpResponse,
   formatDmMessage,
 } from "./welcome";
+import { createTemplateValues, fillTemplate } from "./templateHelpers";
 
 const DM_DISABLED_CODES = new Set([50007]);
 
@@ -84,7 +85,7 @@ export class OnboardingManager {
 
     const targetChannel = channel;
     const memberIndex = await this.computeMemberIndex(member);
-    const messageOptions = buildWelcomeMessage({
+    const messageOptions = await buildWelcomeMessage({
       member,
       config: this.config,
       memberIndex,
@@ -180,7 +181,13 @@ export class OnboardingManager {
   }
 
   private async computeMemberIndex(member: GuildMember): Promise<number> {
-    if (this.config.features.countBotsInMemberCount) {
+    const mode =
+      this.config.welcome?.member_index_mode ??
+      (this.config.features.countBotsInMemberCount
+        ? "include_bots"
+        : "exclude_bots");
+
+    if (mode === "include_bots") {
       return member.guild.memberCount;
     }
 
@@ -263,7 +270,7 @@ export class OnboardingManager {
 
     try {
       const thread = await message.startThread({
-        name: this.buildThreadName(member),
+        name: this.buildThreadName(member, memberIndex),
         autoArchiveDuration: 1440,
       });
 
@@ -295,7 +302,29 @@ export class OnboardingManager {
     }
   }
 
-  private buildThreadName(member: GuildMember) {
+  private buildThreadName(member: GuildMember, memberIndex: number) {
+    const template = this.config.welcome?.thread_name_template;
+
+    if (template) {
+      const rolesChannelId =
+        this.config.onboarding.rolesChannelId ?? this.config.channels.rolesPanel;
+      const values = createTemplateValues({
+        username: member.user.username ?? member.displayName,
+        displayName: member.displayName,
+        mention: member.toString(),
+        guildName: member.guild.name,
+        memberIndex,
+        rolesChannelId,
+        guideUrl: this.config.onboarding.guideUrl,
+        staffRoleIds: this.config.roleAssignments?.staffRoleIds,
+      });
+
+      const resolved = fillTemplate(template, values).trim();
+      if (resolved) {
+        return resolved.length > 90 ? `${resolved.slice(0, 87)}...` : resolved;
+      }
+    }
+
     const base = `${member.displayName}-onboarding`;
     return base.length > 90 ? `${base.slice(0, 87)}...` : base;
   }

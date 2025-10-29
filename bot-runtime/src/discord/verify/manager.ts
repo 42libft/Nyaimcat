@@ -36,7 +36,7 @@ const isSendable = (channel: unknown): channel is GuildTextBasedChannel => {
   );
 };
 
-const resolveEmojiString = (emoji: string | undefined) =>
+const resolveEmojiString = (emoji: string | null | undefined) =>
   emoji && emoji.trim().length > 0 ? emoji.trim() : DEFAULT_VERIFY_EMOJI;
 
 const reactionMatchesEmoji = (
@@ -95,6 +95,13 @@ export class VerifyManager {
     if (!verifyConfig) {
       throw new Error("verify設定が存在しません");
     }
+
+    logger.debug("Verify publish invoked", {
+      prompt: verifyConfig.prompt,
+      mode: verifyConfig.mode,
+      channelId: verifyConfig.channel_id,
+      messageId: verifyConfig.message_id ?? null,
+    });
 
     const channelId =
       options.channelId ??

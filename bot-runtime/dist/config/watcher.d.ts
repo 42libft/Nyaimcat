@@ -17,6 +17,7 @@ export declare class ConfigWatcher {
     private readonly path;
     private readonly intervalMs;
     private timer;
+    private fileWatcher;
     private currentConfig;
     private currentHash;
     private readonly updateListeners;
@@ -30,5 +31,6 @@ export declare class ConfigWatcher {
     private refresh;
     private emitUpdate;
     private emitError;
+    private startFileWatcher;
 }
 //# sourceMappingURL=watcher.d.ts.map

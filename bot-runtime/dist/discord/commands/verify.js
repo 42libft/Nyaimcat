@@ -47,19 +47,19 @@ const handlePost = async (interaction, context) => {
     if (!context.config.verify) {
         await interaction.reply({
             content: "verify設定が存在しません。ダッシュボードから保存してください。",
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
         return;
     }
     if (!(await hasManagePermission(interaction, context))) {
         await interaction.reply({
             content: "この操作を実行する権限が不足しています。",
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
         return;
     }
     const channel = interaction.options.getChannel("channel");
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
     try {
         const result = await context.verifyManager.publish({
             executorId: interaction.user.id,
@@ -86,7 +86,7 @@ const execute = async (interaction, context) => {
     if (!interaction.guild) {
         await interaction.reply({
             content: "ギルド内でのみ使用してください。",
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
         return;
     }
@@ -97,7 +97,7 @@ const execute = async (interaction, context) => {
     }
     await interaction.reply({
         content: "未対応のサブコマンドです。",
-        ephemeral: true,
+        flags: discord_js_1.MessageFlags.Ephemeral,
     });
 };
 exports.verifyCommand = {

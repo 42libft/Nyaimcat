@@ -8,7 +8,7 @@ const data = new discord_js_1.SlashCommandBuilder()
 const execute = async (interaction, _context) => {
     await interaction.reply({
         content: `Pong! (latency ${Date.now() - interaction.createdTimestamp}ms)`,
-        ephemeral: true,
+        flags: discord_js_1.MessageFlags.Ephemeral,
     });
 };
 exports.pingCommand = {

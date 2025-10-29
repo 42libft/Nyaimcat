@@ -48,6 +48,12 @@ class VerifyManager {
         if (!verifyConfig) {
             throw new Error("verify設定が存在しません");
         }
+        logger_1.logger.debug("Verify publish invoked", {
+            prompt: verifyConfig.prompt,
+            mode: verifyConfig.mode,
+            channelId: verifyConfig.channel_id,
+            messageId: verifyConfig.message_id ?? null,
+        });
         const channelId = options.channelId ??
             verifyConfig.channel_id ??
             this.config.channels.verify ??

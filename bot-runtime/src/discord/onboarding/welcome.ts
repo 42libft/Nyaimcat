@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
@@ -9,46 +10,22 @@ import {
   type MessageCreateOptions,
 } from "discord.js";
 
-import type { BotConfig } from "../../config";
+import type {
+  BotConfig,
+  WelcomeCardConfig,
+  WelcomeConfig,
+} from "../../config";
+import { logger } from "../../utils/logger";
+import { createTemplateValues, fillTemplate } from "./templateHelpers";
+import type { TemplateValues } from "./types";
+import { renderWelcomeCard } from "./welcomeCard";
 
 export const WELCOME_ROLES_BUTTON_ID = "onboarding:roles_jump";
 
-type TemplateValues = Record<string, string>;
-
-const fillTemplate = (template: string, values: TemplateValues) =>
-  template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    const replacement = values[key];
-    return typeof replacement === "string" ? replacement : match;
-  });
-
-const buildStaffRoleMentions = (config: BotConfig) => {
-  const staffRoles = config.roleAssignments?.staffRoleIds ?? [];
-
-  if (!staffRoles.length) {
-    return "";
-  }
-
-  return staffRoles.map((roleId) => `<@&${roleId}>`).join(" ");
-};
-
-const buildDefaultDescription = (values: TemplateValues) => {
-  const lines = [
-    `Nyaimlabへようこそ！`,
-    `あなたは **#${values.memberIndex}** 人目のメンバーです。`,
-  ];
-
-  if (values.rolesChannelMention) {
-    lines.push(
-      `ロールの設定は ${values.rolesChannelMention} から行えます。`
-    );
-  }
-
-  if (values.guideUrl) {
-    lines.push(`サーバーガイドはこちら: ${values.guideUrl}`);
-  }
-
-  return lines.join("\n");
-};
+const DEFAULT_MESSAGE_TEMPLATE = "{{mention}}";
+const DEFAULT_EMBED_TITLE = "ようこそ、{{username}} さん！";
+const DEFAULT_EMBED_DESCRIPTION =
+  "Nyaimlabへようこそ！\nあなたは **#{{member_index}}** 人目のメンバーです。";
 
 type BuildWelcomeMessageOptions = {
   member: GuildMember;
@@ -56,10 +33,111 @@ type BuildWelcomeMessageOptions = {
   memberIndex: number;
 };
 
+const buildDefaultDescription = (values: TemplateValues) => {
+  const lines = [
+    "Nyaimlabへようこそ！",
+    `あなたは **#${values["member_index"] ?? values["memberIndex"]}** 人目のメンバーです。`,
+  ];
+
+  if (values["roles_channel_mention"] ?? values.rolesChannelMention) {
+    lines.push(
+      `ロールの設定は ${
+        values["roles_channel_mention"] ?? values.rolesChannelMention
+      } から行えます。`
+    );
+  }
+
+  if (values["guide_url"] ?? values.guideUrl) {
+    lines.push(
+      `サーバーガイドはこちら: ${values["guide_url"] ?? values.guideUrl}`
+    );
+  }
+
+  return lines.join("\n");
+};
+
+const chunkButtons = (
+  buttons: ButtonBuilder[]
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] => {
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+
+  for (let index = 0; index < buttons.length; index += 5) {
+    const slice = buttons.slice(index, index + 5);
+    rows.push(
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        ...slice
+      )
+    );
+  }
+
+  return rows;
+};
+
+const resolveCustomButtons = (
+  welcomeConfig: WelcomeConfig | undefined,
+  guildId: string
+) => {
+  const entries = welcomeConfig?.buttons ?? [];
+
+  return entries
+    .map((entry) => {
+      const label = entry.label.trim();
+      const value = entry.value.trim();
+      if (!label || !value) {
+        return null;
+      }
+
+      const button = new ButtonBuilder().setLabel(label);
+
+      if (entry.target === "url") {
+        try {
+          // Throws if URL is invalid
+          const url = new URL(value);
+          button.setStyle(ButtonStyle.Link).setURL(url.toString());
+          return button;
+        } catch (error) {
+          if (/^\d+$/.test(value)) {
+            const channelUrl = `https://discord.com/channels/${guildId}/${value}`;
+            button.setStyle(ButtonStyle.Link).setURL(channelUrl);
+            logger.warn(
+              "URL ボタンにチャンネルと思われる値が指定されたため、チャンネルへのリンクとして扱います",
+              { label, value }
+            );
+            return button;
+          }
+          const message =
+            error instanceof Error ? error.message : String(error);
+          logger.warn("無効なURLボタンのためスキップします", {
+            label,
+            value,
+            message,
+          });
+          return null;
+        }
+      }
+
+      if (!/^\d+$/.test(value)) {
+        logger.warn("チャンネルボタンの値が数値ではないためスキップします", {
+          label,
+          value,
+        });
+        return null;
+      }
+
+      const channelUrl = `https://discord.com/channels/${guildId}/${value}`;
+      button.setStyle(ButtonStyle.Link).setURL(channelUrl);
+      return button;
+    })
+    .filter((button): button is ButtonBuilder => Boolean(button));
+};
+
 const buildButtons = (
-  config: BotConfig
+  config: BotConfig,
+  member: GuildMember
 ): ActionRowBuilder<MessageActionRowComponentBuilder>[] | undefined => {
   const buttons: ButtonBuilder[] = [];
+
+  buttons.push(...resolveCustomButtons(config.welcome, member.guild.id));
 
   if (config.onboarding.guideUrl) {
     buttons.push(
@@ -86,35 +164,52 @@ const buildButtons = (
     return undefined;
   }
 
-  return [
-    new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      ...buttons
-    ),
-  ];
+  return chunkButtons(buttons);
 };
 
-export const buildWelcomeMessage = ({
-  member,
-  config,
-  memberIndex,
-}: BuildWelcomeMessageOptions): MessageCreateOptions => {
-  const rolesChannelId = config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
-  const timezone = config.onboarding.timezone ?? "Asia/Tokyo";
+const resolveMessageContent = (
+  welcomeConfig: WelcomeConfig | undefined,
+  values: TemplateValues
+) => {
+  const template =
+    welcomeConfig?.message_template?.trim() || DEFAULT_MESSAGE_TEMPLATE;
+  const resolved = fillTemplate(template, values).trim();
+  return resolved.length > 0 ? resolved : undefined;
+};
 
-  const templateValues: TemplateValues = {
-    username: member.displayName,
-    mention: member.toString(),
-    guildName: member.guild.name,
-    memberIndex: memberIndex.toString(),
-    rolesChannelMention: rolesChannelId ? `<#${rolesChannelId}>` : "",
-    guideUrl: config.onboarding.guideUrl ?? "",
-    staffRoleMentions: buildStaffRoleMentions(config),
-  };
+const resolveJoinTimezone = (
+  config: BotConfig,
+  welcomeConfig: WelcomeConfig | undefined
+) => welcomeConfig?.join_timezone ?? config.onboarding.timezone ?? "Asia/Tokyo";
 
-  const descriptionTemplate = config.embeds.welcomeTemplate;
-  const description = descriptionTemplate
-    ? fillTemplate(descriptionTemplate, templateValues)
-    : buildDefaultDescription(templateValues);
+const buildEmbedMessage = (
+  member: GuildMember,
+  config: BotConfig,
+  welcomeConfig: WelcomeConfig | undefined,
+  templateValues: TemplateValues,
+  content: string | undefined,
+  memberIndex: number
+): MessageCreateOptions => {
+  const embed = new EmbedBuilder().setColor(0x5865f2);
+
+  const titleTemplate =
+    welcomeConfig?.title_template?.trim() || DEFAULT_EMBED_TITLE;
+  const title = fillTemplate(titleTemplate, templateValues).trim();
+  embed.setTitle(
+    title || `ようこそ、${member.displayName ?? member.user.username} さん！`
+  );
+
+  const descriptionTemplate =
+    welcomeConfig?.description_template?.trim() ||
+    config.embeds.welcomeTemplate ||
+    DEFAULT_EMBED_DESCRIPTION;
+  const description = fillTemplate(descriptionTemplate, templateValues).trim();
+  embed.setDescription(
+    description || buildDefaultDescription(templateValues)
+  );
+
+  const timezone = resolveJoinTimezone(config, welcomeConfig);
+  const joinFieldLabel = welcomeConfig?.join_field_label?.trim() || "加入日時";
 
   const formattedJoinDate = new Intl.DateTimeFormat("ja-JP", {
     dateStyle: "full",
@@ -122,29 +217,26 @@ export const buildWelcomeMessage = ({
     timeZone: timezone,
   }).format(member.joinedAt ?? new Date());
 
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle(`ようこそ、${member.displayName} さん！`)
-    .setDescription(description)
-    .addFields({
-      name: `加入日時 (${timezone})`,
-      value: formattedJoinDate,
-    })
-    .setFooter({ text: member.guild.name });
+  embed.addFields({
+    name: `${joinFieldLabel} (${timezone})`,
+    value: formattedJoinDate,
+  });
+
+  const footerText =
+    welcomeConfig?.footer_text?.trim() || member.guild.name || "Nyaimlab";
+  embed.setFooter({ text: footerText });
 
   const avatarUrl = member.user.displayAvatarURL({ size: 256 });
-
   if (avatarUrl) {
     embed.setThumbnail(avatarUrl);
   }
 
-  const components = buildButtons(config);
-
   const message: MessageCreateOptions = {
-    content: member.toString(),
+    content,
     embeds: [embed],
   };
 
+  const components = buildButtons(config, member);
   if (components) {
     message.components = components;
   }
@@ -152,10 +244,115 @@ export const buildWelcomeMessage = ({
   return message;
 };
 
+const buildCardMessage = async (
+  member: GuildMember,
+  config: BotConfig,
+  cardConfig: WelcomeCardConfig,
+  templateValues: TemplateValues,
+  content: string | undefined
+): Promise<MessageCreateOptions> => {
+  const avatarUrl =
+    member.user.displayAvatarURL({ extension: "png", size: 512 }) ||
+    "https://cdn.discordapp.com/embed/avatars/0.png";
+
+  const title = fillTemplate(cardConfig.title_template, templateValues).trim();
+  const subtitle = fillTemplate(
+    cardConfig.subtitle_template,
+    templateValues
+  ).trim();
+  const body = cardConfig.body_template
+    ? fillTemplate(cardConfig.body_template, templateValues).trim()
+    : undefined;
+
+  const buffer = await renderWelcomeCard({
+    cardConfig,
+    avatarUrl,
+    text: {
+      title: title || fillTemplate(DEFAULT_EMBED_TITLE, templateValues),
+      subtitle:
+        subtitle ||
+        `Member #${
+          templateValues["member_index"] ?? templateValues.memberIndex
+        }`,
+      body,
+    },
+  });
+
+  const attachment = new AttachmentBuilder(buffer, {
+    name: `welcome-card-${member.id}.png`,
+  });
+
+  const message: MessageCreateOptions = {
+    content,
+    files: [attachment],
+  };
+
+  const components = buildButtons(config, member);
+  if (components) {
+    message.components = components;
+  }
+
+  return message;
+};
+
+export const buildWelcomeMessage = async ({
+  member,
+  config,
+  memberIndex,
+}: BuildWelcomeMessageOptions): Promise<MessageCreateOptions> => {
+  const welcomeConfig = config.welcome;
+
+  const rolesChannelId =
+    config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
+
+  const templateValues = createTemplateValues({
+    username: member.user.username ?? member.displayName,
+    displayName: member.displayName,
+    mention: member.toString(),
+    guildName: member.guild.name,
+    memberIndex,
+    rolesChannelId,
+    guideUrl: config.onboarding.guideUrl,
+    staffRoleIds: config.roleAssignments?.staffRoleIds,
+  });
+
+  const content = resolveMessageContent(welcomeConfig, templateValues);
+  const mode = welcomeConfig?.mode ?? "embed";
+
+  if (mode === "card" && welcomeConfig?.card) {
+    try {
+      return await buildCardMessage(
+        member,
+        config,
+        welcomeConfig.card,
+        templateValues,
+        content
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      logger.error("歓迎カードの生成に失敗したため、Embed モードへフォールバックします", {
+        error: message,
+        memberId: member.id,
+      });
+    }
+  }
+
+  return buildEmbedMessage(
+    member,
+    config,
+    welcomeConfig,
+    templateValues,
+    content,
+    memberIndex
+  );
+};
+
 export const createRolesJumpResponse = (
   config: BotConfig
 ) => {
-  const rolesChannelId = config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
+  const rolesChannelId =
+    config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
 
   if (!rolesChannelId) {
     return {
@@ -175,17 +372,19 @@ export const formatDmMessage = (
   config: BotConfig,
   memberIndex: number
 ) => {
-  const rolesChannelId = config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
+  const rolesChannelId =
+    config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
 
-  const templateValues: TemplateValues = {
-    username: member.displayName,
+  const templateValues = createTemplateValues({
+    username: member.user.username ?? member.displayName,
+    displayName: member.displayName,
     mention: member.toString(),
     guildName: member.guild.name,
-    memberIndex: memberIndex.toString(),
-    rolesChannelMention: rolesChannelId ? `<#${rolesChannelId}>` : "",
-    guideUrl: config.onboarding.guideUrl ?? "",
-    staffRoleMentions: buildStaffRoleMentions(config),
-  };
+    memberIndex,
+    rolesChannelId,
+    guideUrl: config.onboarding.guideUrl,
+    staffRoleIds: config.roleAssignments?.staffRoleIds,
+  });
 
   const template =
     config.onboarding.dm.template ??
@@ -210,23 +409,25 @@ export const buildDmFallbackMessage = (
   config: BotConfig,
   memberIndex: number
 ) => {
-  const placeholders: TemplateValues = {
-    username: member.displayName,
+  const rolesChannelId =
+    config.onboarding.rolesChannelId ?? config.channels.rolesPanel;
+
+  const templateValues = createTemplateValues({
+    username: member.user.username ?? member.displayName,
+    displayName: member.displayName,
     mention: member.toString(),
     guildName: member.guild.name,
-    memberIndex: memberIndex.toString(),
-    rolesChannelMention: config.onboarding.rolesChannelId
-      ? `<#${config.onboarding.rolesChannelId}>`
-      : "",
-    guideUrl: config.onboarding.guideUrl ?? "",
-    staffRoleMentions: buildStaffRoleMentions(config),
-  };
+    memberIndex,
+    rolesChannelId,
+    guideUrl: config.onboarding.guideUrl,
+    staffRoleIds: config.roleAssignments?.staffRoleIds,
+  });
 
-  const defaultTemplate = placeholders.staffRoleMentions
+  const defaultTemplate = templateValues.staffRoleMentions
     ? `{{username}} さんへのDMが送信できませんでした。{{staffRoleMentions}} の皆さん、代替案内をお願いします。`
     : `{{username}} さんへのDMが送信できませんでした。こちらのスレッドで案内を行ってください。`;
 
   const template = config.onboarding.dm.fallbackMessage ?? defaultTemplate;
 
-  return fillTemplate(template, placeholders);
+  return fillTemplate(template, templateValues);
 };

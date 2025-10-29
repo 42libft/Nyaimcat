@@ -73,7 +73,7 @@ python -m src.nyaimlab
 ```
 - デフォルトでは `0.0.0.0:8000` で起動します。`API_HOST` / `API_PORT` で変更可能です。
 - すべてのリクエストに以下のヘッダーが必須です。
-  - `Authorization: Bearer <API_AUTH_TOKEN>`
+ - `Authorization: Bearer <API_AUTH_TOKEN>`
   - `x-client`: ダッシュボード識別子
   - `x-guild-id`: Discord ギルド ID
   - `x-user-id`: 操作ユーザー ID（監査ログに記録）
@@ -90,6 +90,12 @@ python -m src.nyaimlab
 - `/api/state.get`: 現在の状態スナップショットを取得
 
 すべてのレスポンスは `{ "ok": bool, "data": ..., "audit_id": ... }` の形式で返され、エラー時は `error` にメッセージが入ります。
+
+### config.yaml との自動同期
+- `NYAIMLAB_CONFIG_SYNC=1` を指定すると、FastAPI 起動時に `bot-runtime/config/config.yaml`（もしくは `NYAIMLAB_CONFIG_PATH`／`BOT_CONFIG_PATH` で指定したパス）を読み込み、初期状態をダッシュボードへ反映します。  
+- ダッシュボード経由で設定を更新すると、同じ YAML に自動的に書き戻されるため、Bot が参照する設定と乖離しなくなります。  
+- 同期時には直前の `config.yaml` を `backups/` ディレクトリにタイムスタンプ付きで退避し、既定で最新 10 件のみ保持します（`NYAIMLAB_CONFIG_BACKUP_LIMIT` で調整可）。  
+- 同期を利用しない場合は環境変数を設定しなければ従来通り（インメモリのみ）動作します。`scripts/run_dashboard.sh` / `scripts/run_admin_api.sh` では同期が自動で有効化されます。
 
 ## Nyaimlab 管理ダッシュボード (Vite + React)
 `dashboard/` には Pages クライアント向けの管理 UI が含まれます。API を呼び出して設定編集・監査ログ参照・YAML/PR 生成まで行えます。
@@ -139,7 +145,7 @@ cp .env.example .env
 #### オンボーディング／運用支援
 - `/verify post [channel]` — ダッシュボード設定を基に認証パネルを投稿／更新します。
 - `/roles post [channel]` — ロール配布パネルを投稿／更新します（ManageRoles 権限またはスタッフロールが必要）。
-- `/introduce` — 自己紹介モーダルを開き、設定済みチャンネルに投稿します。
+- `/introduce [image:<画像>]` — 自己紹介モーダルを開き、設定済みチャンネルに投稿します。添付画像がある場合は埋め込み画像として使用し、未指定時はユーザーアイコンをサムネイルに設定します。
 - `/feedback bug|idea` — 不具合報告や改善アイデアを Markdown として保存し、監査ログへ記録します。
 
 #### ユーティリティ
@@ -167,6 +173,15 @@ cp .env.example .env
 - Python 側: `pytest`
 - ダッシュボード: `npm run lint`
 必要に応じて個別ディレクトリで実行してください。
+
+## ローカル RAG サービス (Ollama + Chroma)
+- `scripts/run_rag_service.sh` で RAG サービスを起動し、`scripts/stop_rag_service.sh` で停止します。初回実行時は `.venv-rag` が生成され、`requirements-rag.txt` に基づいて依存パッケージがインストールされます。
+- サービスはデフォルトで `127.0.0.1:8100` をリッスンし、`/health` で稼働状況を確認できます。Ollama の接続先は `OLLAMA_BASE_URL`、モデルは `OLLAMA_MODEL` を環境変数で調整してください。
+- ナレッジ用 Markdown は `docs/rag/knowledge/` に配置します。起動時に front-matter（`title` / `tags`）付きで読み込まれ、Chroma (`data/chroma/`) に登録されます。
+- Bot からは HTTP 経由で `/events/message` へメッセージの観測情報を渡し、`/chat/query` で応答生成を要求します。感情パラメータは `/admin/feeling`、モード切り替えは `/admin/mode` で操作可能です。
+- Discord 側では `/rag status` `/rag mode` `/rag feeling` `/rag ingest` `/rag memo add` `/rag memory prune` を用いて、ヘルス確認・応答パラメータ調整・チャンネル取り込み・メモ追加・記憶 pruning を実行できます（接続先は環境変数 `RAG_SERVICE_BASE_URL` を参照）。
+- Qwen-3 14B 量子化から Ollama 登録までの手順は `docs/rag/model_setup_qwen3_14b.md` を参照してください。
+- 管理ダッシュボードに追加された「RAG」タブから、モード別プロンプトや感情パラメータ、短期記憶の除外チャンネル、ナレッジ登録をまとめて操作できます。
 
 ## 参考ドキュメント
 - `docs/NyaimlabBotDesign.md`: Nyaimlab Bot の引き継ぎ設計メモ

@@ -15,11 +15,13 @@ const manager_4 = require("./introduce/manager");
 const followUpManager_1 = require("./codex/followUpManager");
 const presenceManager_1 = require("./presenceManager");
 const permissionMonitor_1 = require("../health/permissionMonitor");
+const client_1 = require("../rag/client");
 const buildIntentList = () => [
     discord_js_1.GatewayIntentBits.Guilds,
     discord_js_1.GatewayIntentBits.GuildMembers,
     discord_js_1.GatewayIntentBits.GuildMessages,
     discord_js_1.GatewayIntentBits.GuildMessageReactions,
+    discord_js_1.GatewayIntentBits.MessageContent,
 ];
 const PARTIALS = [
     discord_js_1.Partials.Message,
@@ -49,6 +51,12 @@ class DiscordRuntime {
         this.presenceManager = new presenceManager_1.PresenceManager(this.client);
         this.permissionMonitor = new permissionMonitor_1.PermissionMonitor(this.client, this.config);
         this.escl = (0, environment_1.createEsclEnvironment)();
+        this.ragClient = new client_1.RagClient();
+        this.ragConfig = null;
+        this.ragExcludedChannels = new Set();
+        this.handledMentionMessageQueue = [];
+        this.handledMentionMessageSet = new Set();
+        this.syncRagConfig(this.config);
     }
     async start() {
         try {
@@ -86,6 +94,7 @@ class DiscordRuntime {
         this.introduceManager.updateConfig(config);
         void this.presenceManager.refresh();
         this.permissionMonitor.updateConfig(config);
+        this.syncRagConfig(config);
         logger_1.logger.debug("DiscordRuntime 設定を更新しました", {
             changedSections: context?.changedSections ?? [],
             hash: context?.hash,
@@ -98,6 +107,23 @@ class DiscordRuntime {
                 hash: context?.hash ?? null,
             },
         });
+    }
+    syncRagConfig(config) {
+        this.ragConfig = config.rag ?? null;
+        this.ragExcludedChannels = new Set(this.ragConfig?.short_term.excluded_channels ?? []);
+    }
+    markMentionHandled(messageId) {
+        if (this.handledMentionMessageSet.has(messageId)) {
+            return;
+        }
+        this.handledMentionMessageSet.add(messageId);
+        this.handledMentionMessageQueue.push(messageId);
+        if (this.handledMentionMessageQueue.length > 500) {
+            const oldest = this.handledMentionMessageQueue.shift();
+            if (oldest) {
+                this.handledMentionMessageSet.delete(oldest);
+            }
+        }
     }
     getClient() {
         return this.client;
@@ -189,6 +215,9 @@ class DiscordRuntime {
                     message,
                 });
             }
+        });
+        this.client.on("messageCreate", (message) => {
+            void this.forwardMessageToRag(message);
         });
         this.client.on("messageReactionAdd", async (reaction, user) => {
             try {
@@ -302,6 +331,7 @@ class DiscordRuntime {
             rolesManager: this.rolesManager,
             introduceManager: this.introduceManager,
             escl: this.escl,
+            ragClient: this.ragClient,
         };
     }
     async handleChatCommand(interaction) {
@@ -312,7 +342,7 @@ class DiscordRuntime {
             });
             await interaction.reply({
                 content: "このコマンドは現在利用できません。",
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
             return;
         }
@@ -338,13 +368,13 @@ class DiscordRuntime {
                 if (interaction.deferred || interaction.replied) {
                     await interaction.followUp({
                         content: "コマンド実行中にエラーが発生しました。",
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                 }
                 else if (interaction.isRepliable()) {
                     await interaction.reply({
                         content: "コマンド実行中にエラーが発生しました。",
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                 }
             }
@@ -399,6 +429,232 @@ class DiscordRuntime {
                 });
             }
         }
+    }
+    async forwardMessageToRag(message) {
+        if (!message.inGuild()) {
+            return;
+        }
+        if (message.author.bot) {
+            return;
+        }
+        let resolved = message;
+        if (message.partial) {
+            try {
+                resolved = await message.fetch();
+            }
+            catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                logger_1.logger.debug("メッセージのフェッチに失敗したため RAG 連携をスキップします", {
+                    messageId: message.id,
+                    reason: msg,
+                });
+                return;
+            }
+        }
+        const content = resolved.content?.trim();
+        if (!content) {
+            return;
+        }
+        const clientUser = this.client.user;
+        const tags = [];
+        if (clientUser && resolved.mentions.users.has(clientUser.id)) {
+            tags.push("mention");
+        }
+        if ("isThread" in resolved.channel &&
+            typeof resolved.channel.isThread === "function" &&
+            resolved.channel.isThread()) {
+            tags.push("thread");
+        }
+        if (resolved.reference) {
+            tags.push("reply");
+        }
+        if (content.includes("?")) {
+            tags.push("question");
+        }
+        const probableMode = tags.includes("question") ? "help" : undefined;
+        const eventBase = {
+            message_id: resolved.id,
+            guild_id: resolved.guildId,
+            channel_id: resolved.channelId,
+            author_id: resolved.author.id,
+            content,
+            timestamp: resolved.createdAt.toISOString(),
+            is_mention: tags.includes("mention"),
+            tags,
+        };
+        const event = probableMode !== undefined
+            ? { ...eventBase, probable_mode: probableMode }
+            : eventBase;
+        const isExcluded = this.ragExcludedChannels.has(resolved.channelId);
+        try {
+            if (!isExcluded) {
+                await this.ragClient.postMessage(event);
+            }
+            else {
+                logger_1.logger.debug("RAG へのメッセージ送信をスキップします (除外チャンネル)", {
+                    channelId: resolved.channelId,
+                });
+            }
+        }
+        catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            logger_1.logger.debug("RAG サービスへのメッセージ送信に失敗しました", {
+                messageId: resolved.id,
+                channelId: resolved.channelId,
+                reason: msg,
+            });
+        }
+        if (event.is_mention) {
+            await this.respondToMention(resolved);
+        }
+    }
+    async respondToMention(message) {
+        const clientUser = this.client.user;
+        if (!clientUser) {
+            return;
+        }
+        if (!message.inGuild()) {
+            return;
+        }
+        if (!message.mentions.users.has(clientUser.id)) {
+            return;
+        }
+        if (!message.channel.isTextBased()) {
+            return;
+        }
+        if (this.handledMentionMessageSet.has(message.id)) {
+            return;
+        }
+        this.markMentionHandled(message.id);
+        const hasExistingReply = await this.hasExistingMentionReply(message, clientUser);
+        if (hasExistingReply) {
+            logger_1.logger.debug("既に同じメッセージへの返信が存在するためスキップします", {
+                messageId: message.id,
+            });
+            return;
+        }
+        const normalizeContent = (value) => typeof value === "string" ? value.trim() : "";
+        let replyToMessageId = message.reference?.messageId ?? null;
+        const userMessageContent = normalizeContent(message.cleanContent) || normalizeContent(message.content);
+        let prompt = userMessageContent;
+        if (replyToMessageId) {
+            try {
+                const referenced = await message.fetchReference();
+                replyToMessageId = referenced.id;
+                const referencedContent = normalizeContent(referenced.cleanContent) ||
+                    normalizeContent(referenced.content);
+                if (referencedContent || userMessageContent) {
+                    const authorName = referenced.author?.globalName ??
+                        referenced.author?.username ??
+                        (referenced.author
+                            ? `${referenced.author.username}#${referenced.author.discriminator}`
+                            : null);
+                    const sections = [
+                        "以下の会話内容を踏まえて返答してください。",
+                        `${authorName ? `${authorName} のメッセージ` : "参照メッセージ"}:\n${referencedContent || "(本文なし)"}`,
+                        `ユーザーの返信:\n${userMessageContent || "(本文なし)"}`,
+                    ];
+                    prompt = sections.join("\n\n");
+                }
+            }
+            catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                logger_1.logger.debug("返信元メッセージの取得に失敗したため、現在のメッセージのみで応答します", {
+                    messageId: message.id,
+                    replyToMessageId,
+                    reason: msg,
+                });
+            }
+        }
+        if (!prompt) {
+            return;
+        }
+        try {
+            const channel = message.channel;
+            if ("sendTyping" in channel &&
+                typeof channel.sendTyping === "function") {
+                await channel.sendTyping();
+            }
+            const defaultMode = this.ragConfig?.feelings.default_mode ?? "chat";
+            const response = await this.ragClient.chat({
+                prompt,
+                mode: defaultMode,
+                channelId: message.channelId,
+                guildId: message.guildId,
+                userId: message.author.id,
+                includeRecent: true,
+                maxContextMessages: 20,
+            });
+            const replyText = response.reply?.trim();
+            if (!replyText) {
+                return;
+            }
+            const alreadyReplied = await this.hasExistingMentionReply(message, clientUser);
+            if (alreadyReplied) {
+                logger_1.logger.debug("返信生成中に別インスタンスが応答したためスキップします", {
+                    messageId: message.id,
+                });
+                return;
+            }
+            await message.reply({
+                content: replyText,
+                allowedMentions: { repliedUser: false },
+            });
+            await this.auditLogger.log({
+                action: "rag.reply",
+                status: "success",
+                details: {
+                    messageId: message.id,
+                    channelId: message.channelId,
+                    guildId: message.guildId,
+                    usedContextMessages: response.used_context.length,
+                    replyToMessageId,
+                },
+            });
+        }
+        catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            logger_1.logger.warn("メンション応答の生成に失敗しました", {
+                messageId: message.id,
+                channelId: message.channelId,
+                reason: msg,
+            });
+            await this.auditLogger.log({
+                action: "rag.reply",
+                status: "failure",
+                description: msg,
+                details: {
+                    messageId: message.id,
+                    channelId: message.channelId,
+                    guildId: message.guildId,
+                    replyToMessageId,
+                },
+            });
+        }
+    }
+    async hasExistingMentionReply(message, clientUser) {
+        if (!message.channel.isTextBased()) {
+            return false;
+        }
+        try {
+            const recent = await message.channel.messages.fetch({ limit: 20 });
+            for (const candidate of recent.values()) {
+                if (candidate.author.id !== clientUser.id) {
+                    continue;
+                }
+                if (candidate.reference?.messageId === message.id) {
+                    return true;
+                }
+            }
+        }
+        catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            logger_1.logger.debug("既存返信の確認に失敗しました", {
+                messageId: message.id,
+                reason: msg,
+            });
+        }
+        return false;
     }
     async handleEsclAccountModal(interaction) {
         const handled = await (0, esclAccount_1.handleEsclAccountModalSubmit)(interaction, this.buildCommandContext());

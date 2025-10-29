@@ -8,6 +8,7 @@ import RolesSection from './components/RolesSection';
 import IntroduceSection from './components/IntroduceSection';
 import ScrimsSection from './components/ScrimsSection';
 import SettingsSection from './components/SettingsSection';
+import RagSection from './components/RagSection';
 import AuditLogSection from './components/AuditLogSection';
 import YamlSection from './components/YamlSection';
 import { DashboardApi, ApiError } from './api';
@@ -17,6 +18,7 @@ import {
   AuthSettings,
   GitHubSettings,
   WelcomeConfig,
+  WelcomePreview,
   GuidelineTemplate,
   VerifyConfig,
   RolesConfig,
@@ -25,6 +27,8 @@ import {
   ScrimConfig,
   SettingsPayload,
   AuditEntry,
+  RagConfig,
+  RagKnowledgeEntry,
 } from './types';
 import {
   createDefaultWelcome,
@@ -35,6 +39,7 @@ import {
   createDefaultSchema,
   createDefaultScrims,
   createDefaultSettings,
+  createDefaultRagConfig,
   createEmptyState,
 } from './defaults';
 import { deepClone, defaultGitHubSettings, stateToConfig, toYaml } from './utils';
@@ -61,6 +66,7 @@ type TabKey =
   | 'roles'
   | 'introduce'
   | 'scrims'
+  | 'rag'
   | 'settings'
   | 'logs'
   | 'yaml';
@@ -73,6 +79,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'roles', label: 'ロール配布' },
   { key: 'introduce', label: '自己紹介' },
   { key: 'scrims', label: 'スクリム' },
+  { key: 'rag', label: 'RAG' },
   { key: 'settings', label: '共通設定' },
   { key: 'logs', label: '監査ログ' },
   { key: 'yaml', label: 'YAML & PR' },
@@ -91,6 +98,7 @@ const normalizeState = (snapshot: any): DashboardState => {
     introduce_schema: snapshot?.introduce_schema ?? { fields: [] },
     scrims: snapshot?.scrims ?? null,
     settings: snapshot?.settings ?? {},
+    rag: snapshot?.rag ?? createDefaultRagConfig(),
   };
 };
 
@@ -106,6 +114,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
@@ -114,16 +123,37 @@ const App = () => {
   const updatedYaml = useMemo(() => toYaml(stateToConfig(draftState)), [draftState]);
 
   const handleLogin = (settings: AuthSettings) => {
+    setError(null);
+    setAuthError(null);
     setAuth(settings);
     setActiveTab('overview');
   };
 
-  const handleLogout = () => {
+  const performLogout = (message: string | null) => {
     setAuth(null);
     setOriginalState(null);
     setDraftState(null);
     setLastAuditId(null);
     setLogs([]);
+    setError(null);
+    setLoading(false);
+    setLogsLoading(false);
+    setAuthError(message);
+  };
+
+  const handleLogout = () => {
+    performLogout(null);
+  };
+
+  const handleApiError = (err: unknown, fallbackMessage: string): string | null => {
+    if (err instanceof ApiError) {
+      if (err.status === 401) {
+        performLogout('認証情報が失効しました。再度ログインしてください。');
+        return null;
+      }
+      return err.message;
+    }
+    return fallbackMessage;
   };
 
   const loadAuditLogs = async () => {
@@ -136,8 +166,10 @@ const App = () => {
         setLastAuditId(response.auditId);
       }
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : '監査ログの取得に失敗しました';
-      setError(message);
+      const message = handleApiError(err, '監査ログの取得に失敗しました');
+      if (message) {
+        setError(message);
+      }
     } finally {
       setLogsLoading(false);
     }
@@ -158,8 +190,10 @@ const App = () => {
         setLastAuditId(response.auditId);
       }
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : '状態の取得に失敗しました';
-      setError(message);
+      const message = handleApiError(err, '状態の取得に失敗しました');
+      if (message) {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -178,7 +212,25 @@ const App = () => {
   }, [activeTab, api]);
 
   if (!auth || !auth.token) {
-    return <AuthForm initial={auth ?? defaultAuth} onSubmit={handleLogin} />;
+    return <AuthForm initial={auth ?? defaultAuth} onSubmit={handleLogin} error={authError} />;
+  }
+
+  if (error && (!draftState || !originalState)) {
+    return (
+      <div className="dashboard" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div className="section-card" style={{ maxWidth: 320 }}>
+          <div className="status-bar error" style={{ marginBottom: 16 }}>
+            {error}
+          </div>
+          <div className="actions-row" style={{ justifyContent: 'flex-end', gap: 12 }}>
+            <button className="secondary" onClick={() => handleLogout()}>
+              ログアウト
+            </button>
+            <button onClick={() => refreshState()}>再読み込み</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (loading || !draftState || !originalState) {
@@ -227,6 +279,10 @@ const App = () => {
     setDraftState((prev) => (prev ? { ...prev, settings } : prev));
   };
 
+  const handleRagChange = (config: RagConfig) => {
+    setDraftState((prev) => (prev ? { ...prev, rag: config } : prev));
+  };
+
   const runSave = async <T,>(
     fn: () => Promise<{ data: T; auditId?: string }>,
     updater: (data: T) => void
@@ -239,7 +295,14 @@ const App = () => {
         setLastAuditId(response.auditId);
       }
     } catch (err) {
-      throw err instanceof ApiError ? err : new Error('API call failed');
+      const message = handleApiError(err, 'API 呼び出しに失敗しました');
+      if (message) {
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
     }
   };
 
@@ -251,6 +314,25 @@ const App = () => {
         setDraftState((prev) => (prev ? { ...prev, welcome: data.config } : prev));
       }
     );
+  };
+
+  const previewWelcome = async (config: WelcomeConfig): Promise<WelcomePreview> => {
+    if (!api) {
+      throw new Error('API が初期化されていません');
+    }
+    try {
+      const response = await api.post<{ preview: WelcomePreview }>('/welcome.preview', { config });
+      if (response.auditId) {
+        setLastAuditId(response.auditId);
+      }
+      return response.data.preview;
+    } catch (err) {
+      const message = handleApiError(err, 'Welcome プレビューの生成に失敗しました');
+      if (message) {
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
+    }
   };
 
   const saveGuideline = async (template: GuidelineTemplate) => {
@@ -265,9 +347,21 @@ const App = () => {
 
   const testGuideline = async () => {
     if (!api) return;
-    const response = await api.post('/guideline.test', {});
-    if (response.auditId) {
-      setLastAuditId(response.auditId);
+    try {
+      const response = await api.post('/guideline.test', {});
+      if (response.auditId) {
+        setLastAuditId(response.auditId);
+      }
+    } catch (err) {
+      const message = handleApiError(err, 'ガイドライン DM のテスト送信に失敗しました');
+      if (message) {
+        setError(message);
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
     }
   };
 
@@ -283,11 +377,23 @@ const App = () => {
 
   const removeVerify = async () => {
     if (!api) return;
-    const response = await api.post('/verify.remove', {});
-    setOriginalState((prev) => (prev ? { ...prev, verify: null } : prev));
-    setDraftState((prev) => (prev ? { ...prev, verify: null } : prev));
-    if (response.auditId) {
-      setLastAuditId(response.auditId);
+    try {
+      const response = await api.post('/verify.remove', {});
+      setOriginalState((prev) => (prev ? { ...prev, verify: null } : prev));
+      setDraftState((prev) => (prev ? { ...prev, verify: null } : prev));
+      if (response.auditId) {
+        setLastAuditId(response.auditId);
+      }
+    } catch (err) {
+      const message = handleApiError(err, 'Verify 設定の削除に失敗しました');
+      if (message) {
+        setError(message);
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
     }
   };
 
@@ -306,13 +412,25 @@ const App = () => {
         payloads.push({ role_id: roleId, emoji: null });
       }
     }
-    for (const payload of payloads) {
-      const response = await api.post<{ mapping: Record<string, string> }>('/roles.mapEmoji', payload);
-      setOriginalState((prev) => (prev ? { ...prev, role_emoji_map: response.data.mapping } : prev));
-      setDraftState((prev) => (prev ? { ...prev, role_emoji_map: response.data.mapping } : prev));
-      if (response.auditId) {
-        setLastAuditId(response.auditId);
+    try {
+      for (const payload of payloads) {
+        const response = await api.post<{ mapping: Record<string, string> }>('/roles.mapEmoji', payload);
+        setOriginalState((prev) => (prev ? { ...prev, role_emoji_map: response.data.mapping } : prev));
+        setDraftState((prev) => (prev ? { ...prev, role_emoji_map: response.data.mapping } : prev));
+        if (response.auditId) {
+          setLastAuditId(response.auditId);
+        }
       }
+    } catch (err) {
+      const message = handleApiError(err, 'ロールと絵文字の同期に失敗しました');
+      if (message) {
+        setError(message);
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
     }
   };
 
@@ -330,11 +448,23 @@ const App = () => {
 
   const removeRoles = async () => {
     if (!api) return;
-    const response = await api.post<{ config: RolesConfig | null }>('/roles.remove', { role_id: null });
-    setOriginalState((prev) => (prev ? { ...prev, roles: null, role_emoji_map: {} } : prev));
-    setDraftState((prev) => (prev ? { ...prev, roles: null, role_emoji_map: {} } : prev));
-    if (response.auditId) {
-      setLastAuditId(response.auditId);
+    try {
+      const response = await api.post<{ config: RolesConfig | null }>('/roles.remove', { role_id: null });
+      setOriginalState((prev) => (prev ? { ...prev, roles: null, role_emoji_map: {} } : prev));
+      setDraftState((prev) => (prev ? { ...prev, roles: null, role_emoji_map: {} } : prev));
+      if (response.auditId) {
+        setLastAuditId(response.auditId);
+      }
+    } catch (err) {
+      const message = handleApiError(err, 'ロール設定の削除に失敗しました');
+      if (message) {
+        setError(message);
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
     }
   };
 
@@ -370,9 +500,21 @@ const App = () => {
 
   const runScrim = async (dryRun: boolean) => {
     if (!api) return;
-    const response = await api.post('/scrims.run', { dry_run: dryRun });
-    if (response.auditId) {
-      setLastAuditId(response.auditId);
+    try {
+      const response = await api.post('/scrims.run', { dry_run: dryRun });
+      if (response.auditId) {
+        setLastAuditId(response.auditId);
+      }
+    } catch (err) {
+      const message = handleApiError(err, 'スクリムの実行リクエストに失敗しました');
+      if (message) {
+        setError(message);
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
     }
   };
 
@@ -386,7 +528,49 @@ const App = () => {
     );
   };
 
-  const welcomeDraft = draftState.welcome ?? createDefaultWelcome();
+  const saveRagConfig = async (config: RagConfig) => {
+    await runSave(
+      () => api.post<{ config: RagConfig }>('/rag.config.save', config),
+      (data) => {
+        setOriginalState((prev) => (prev ? { ...prev, rag: data.config } : prev));
+        setDraftState((prev) => (prev ? { ...prev, rag: data.config } : prev));
+      }
+    );
+  };
+
+  const registerRagKnowledge = async (entry: RagKnowledgeEntry): Promise<string> => {
+    if (!api) {
+      throw new Error('API が初期化されていません');
+    }
+    try {
+      const response = await api.post<{ path: string }>('/rag.knowledge.add', entry);
+      if (response.auditId) {
+        setLastAuditId(response.auditId);
+      }
+      return response.data.path;
+    } catch (err) {
+      const message = handleApiError(err, 'ナレッジの登録に失敗しました');
+      if (message) {
+        throw new Error(message);
+      }
+      throw new Error('認証情報が失効しました。再度ログインしてください。');
+    }
+  };
+
+  const welcomeDraft = useMemo(() => {
+    const base = createDefaultWelcome();
+    const current = draftState?.welcome;
+    if (!current) {
+      return base;
+    }
+    return {
+      ...base,
+      ...current,
+      card: current.card
+        ? { ...base.card, ...current.card }
+        : base.card,
+    };
+  }, [draftState]);
   const guidelineDraft = draftState.guideline ?? createDefaultGuideline();
   const verifyDraft = draftState.verify ?? createDefaultVerify();
   const rolesDraft = draftState.roles ?? createDefaultRoles();
@@ -396,6 +580,7 @@ const App = () => {
     : createDefaultSchema();
   const scrimDraft = draftState.scrims ?? createDefaultScrims();
   const settingsDraft = { ...createDefaultSettings(), ...draftState.settings };
+  const ragDraft = draftState.rag ?? createDefaultRagConfig();
 
   return (
     <div className="dashboard">
@@ -425,7 +610,12 @@ const App = () => {
           <OverviewSection state={draftState} onRefresh={refreshState} lastAuditId={lastAuditId ?? undefined} />
         )}
         {activeTab === 'welcome' && (
-          <WelcomeSection value={welcomeDraft} onChange={handleWelcomeChange} onSave={saveWelcome} />
+          <WelcomeSection
+            value={welcomeDraft}
+            onChange={handleWelcomeChange}
+            onSave={saveWelcome}
+            onPreview={previewWelcome}
+          />
         )}
         {activeTab === 'guideline' && (
           <GuidelineSection
@@ -465,6 +655,15 @@ const App = () => {
         )}
         {activeTab === 'scrims' && (
           <ScrimsSection value={scrimDraft} onChange={handleScrimChange} onSave={saveScrims} onRun={runScrim} />
+        )}
+        {activeTab === 'rag' && (
+          <RagSection
+            value={ragDraft}
+            onChange={handleRagChange}
+            onSave={saveRagConfig}
+            onRefresh={refreshState}
+            onRegisterKnowledge={registerRagKnowledge}
+          />
         )}
         {activeTab === 'settings' && (
           <SettingsSection value={settingsDraft} onChange={handleSettingsChange} onSave={saveSettings} />

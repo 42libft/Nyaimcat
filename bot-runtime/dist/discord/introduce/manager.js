@@ -15,15 +15,19 @@ const isTextChannel = (channel) => {
         typeof channel.isTextBased === "function" &&
         channel.isTextBased());
 };
+const MODAL_ID_PREFIX = `${INTRODUCE_MODAL_ID}:`;
+const PENDING_TTL_MS = 5 * 60 * 1000;
+const VALID_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"]);
 class IntroduceManager {
     constructor(auditLogger, config) {
         this.auditLogger = auditLogger;
+        this.pendingSubmissions = new Map();
         this.config = config;
     }
     updateConfig(config) {
         this.config = config;
     }
-    async openModal(interaction) {
+    async openModal(interaction, options) {
         const introduceConfig = this.getIntroduceConfig();
         if (!introduceConfig) {
             await interaction.reply({
@@ -32,7 +36,8 @@ class IntroduceManager {
             });
             return;
         }
-        const modal = this.buildModal();
+        const modalId = this.buildModalId(interaction.id);
+        const modal = this.buildModal(modalId);
         if (!modal) {
             await interaction.reply({
                 content: "自己紹介フォームが未設定のため、投稿できません。",
@@ -40,12 +45,15 @@ class IntroduceManager {
             });
             return;
         }
+        this.storePendingSubmission(modalId, interaction.user.id, options?.imageAttachment);
         await interaction.showModal(modal);
     }
     async handleModalSubmit(interaction) {
-        if (interaction.customId !== INTRODUCE_MODAL_ID) {
+        if (interaction.customId !== INTRODUCE_MODAL_ID &&
+            !interaction.customId.startsWith(MODAL_ID_PREFIX)) {
             return;
         }
+        const pending = this.consumePendingSubmission(interaction.customId);
         const introduceConfig = this.getIntroduceConfig();
         const schema = this.getSchema();
         if (!introduceConfig || !interaction.guild) {
@@ -81,9 +89,12 @@ class IntroduceManager {
                 ? interaction.member
                 : await interaction.guild.members.fetch(interaction.user.id);
             const fields = this.collectSubmissionValues(interaction, schema);
-            const embed = this.buildEmbed(member, introduceConfig, fields);
+            const embed = this.buildEmbed(member, introduceConfig, fields, pending?.image);
             const content = this.buildMessageContent(introduceConfig, member, fields);
-            const message = await channel.send({
+            const files = pending?.image !== undefined
+                ? [{ attachment: pending.image.url, name: pending.image.uploadName }]
+                : undefined;
+            const messagePayload = {
                 content,
                 embeds: [embed],
                 allowedMentions: {
@@ -91,7 +102,11 @@ class IntroduceManager {
                     roles: introduceConfig.mention_role_ids ?? [],
                     repliedUser: false,
                 },
-            });
+            };
+            if (files) {
+                messagePayload.files = files;
+            }
+            const message = await channel.send(messagePayload);
             await interaction.editReply({
                 content: `自己紹介を <#${channelId}> に投稿しました。`,
             });
@@ -102,6 +117,7 @@ class IntroduceManager {
                     userId: member.id,
                     channelId,
                     messageId: message.id,
+                    customImage: Boolean(pending?.image),
                 },
             });
         }
@@ -116,6 +132,7 @@ class IntroduceManager {
                 details: {
                     userId: interaction.user.id,
                     channelId,
+                    customImage: Boolean(pending?.image),
                 },
             });
         }
@@ -126,7 +143,10 @@ class IntroduceManager {
     getSchema() {
         return this.config.introduce_schema ?? null;
     }
-    buildModal() {
+    buildModalId(interactionId) {
+        return `${MODAL_ID_PREFIX}${interactionId}`;
+    }
+    buildModal(modalId) {
         const schema = this.getSchema();
         const introduceConfig = this.getIntroduceConfig();
         if (!schema || !introduceConfig) {
@@ -136,9 +156,8 @@ class IntroduceManager {
         if (!fields.length) {
             return null;
         }
-        const modal = new discord_js_1.ModalBuilder()
-            .setCustomId(INTRODUCE_MODAL_ID)
-            .setTitle(introduceConfig.embed_title ?? "自己紹介");
+        const modalTitle = (introduceConfig.embed_title ?? "").trim() || "自己紹介";
+        const modal = new discord_js_1.ModalBuilder().setCustomId(modalId).setTitle(modalTitle);
         const limitedFields = fields.slice(0, 5);
         for (const field of limitedFields) {
             const input = new discord_js_1.TextInputBuilder()
@@ -165,15 +184,18 @@ class IntroduceManager {
         }
         return result;
     }
-    buildEmbed(member, config, values) {
+    buildEmbed(member, config, values, customImage) {
+        const embedTitle = (config.embed_title ?? "").trim();
         const embed = new discord_js_1.EmbedBuilder()
-            .setTitle(config.embed_title ?? "自己紹介")
             .setColor(0x5865f2)
             .setTimestamp(new Date())
             .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
             .setFooter(config.footer_text
             ? { text: config.footer_text }
             : { text: member.guild.name });
+        if (embedTitle) {
+            embed.setTitle(embedTitle);
+        }
         const schema = this.getSchema();
         const fields = schema?.fields?.filter((field) => field.enabled !== false) ?? [];
         for (const field of fields.slice(0, 5)) {
@@ -187,9 +209,14 @@ class IntroduceManager {
                 inline: false,
             });
         }
-        const avatarUrl = member.user.displayAvatarURL({ size: 256 });
-        if (avatarUrl) {
-            embed.setThumbnail(avatarUrl);
+        if (customImage) {
+            embed.setImage(`attachment://${customImage.uploadName}`);
+        }
+        else {
+            const avatarUrl = member.user.displayAvatarURL({ size: 256 });
+            if (avatarUrl) {
+                embed.setThumbnail(avatarUrl);
+            }
         }
         return embed;
     }
@@ -218,6 +245,66 @@ class IntroduceManager {
             mentions.push(`<@&${roleId}>`);
         }
         return mentions.join(" ");
+    }
+    storePendingSubmission(customId, userId, imageAttachment) {
+        this.cleanupPendingSubmissions();
+        const submission = {
+            userId,
+            createdAt: Date.now(),
+        };
+        if (imageAttachment) {
+            submission.image = this.normalizeImageAttachment(imageAttachment);
+        }
+        this.pendingSubmissions.set(customId, submission);
+    }
+    consumePendingSubmission(customId) {
+        const pending = this.pendingSubmissions.get(customId);
+        if (pending) {
+            this.pendingSubmissions.delete(customId);
+        }
+        return pending;
+    }
+    cleanupPendingSubmissions() {
+        const now = Date.now();
+        for (const [key, value] of this.pendingSubmissions.entries()) {
+            if (now - value.createdAt > PENDING_TTL_MS) {
+                this.pendingSubmissions.delete(key);
+            }
+        }
+    }
+    normalizeImageAttachment(attachment) {
+        const originalName = attachment.name ?? "introduce-image";
+        const sanitizedBase = originalName
+            .replace(/\.[^.]+$/, "")
+            .replace(/[^a-zA-Z0-9_-]+/g, "_")
+            .slice(0, 40) || "introduce-image";
+        const extension = this.resolveImageExtension(attachment.name, attachment.contentType ?? "");
+        return {
+            url: attachment.url,
+            uploadName: `${sanitizedBase}${extension}`,
+        };
+    }
+    resolveImageExtension(name, contentType) {
+        const lowerName = name?.toLowerCase() ?? "";
+        const inferredFromName = [...VALID_IMAGE_EXTENSIONS].find((ext) => lowerName.endsWith(ext));
+        if (inferredFromName) {
+            return inferredFromName;
+        }
+        if (contentType.startsWith("image/")) {
+            if (contentType.includes("png")) {
+                return ".png";
+            }
+            if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+                return ".jpg";
+            }
+            if (contentType.includes("gif")) {
+                return ".gif";
+            }
+            if (contentType.includes("webp")) {
+                return ".webp";
+            }
+        }
+        return ".png";
     }
 }
 exports.IntroduceManager = IntroduceManager;

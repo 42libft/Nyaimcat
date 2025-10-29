@@ -1,8 +1,81 @@
 import { z } from "zod";
+declare const WelcomeCardConfigSchema: z.ZodObject<{
+    background_image: z.ZodString;
+    font_path: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    font_family: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    title_template: z.ZodDefault<z.ZodString>;
+    subtitle_template: z.ZodDefault<z.ZodString>;
+    body_template: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    text_color: z.ZodDefault<z.ZodString>;
+    accent_color: z.ZodDefault<z.ZodString>;
+    overlay_color: z.ZodDefault<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+    avatar_border_color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    avatar_offset_x: z.ZodDefault<z.ZodNumber>;
+    avatar_offset_y: z.ZodDefault<z.ZodNumber>;
+    title_offset_x: z.ZodDefault<z.ZodNumber>;
+    title_offset_y: z.ZodDefault<z.ZodNumber>;
+    title_font_size: z.ZodDefault<z.ZodNumber>;
+    subtitle_offset_x: z.ZodDefault<z.ZodNumber>;
+    subtitle_offset_y: z.ZodDefault<z.ZodNumber>;
+    subtitle_font_size: z.ZodDefault<z.ZodNumber>;
+    body_offset_x: z.ZodDefault<z.ZodNumber>;
+    body_offset_y: z.ZodDefault<z.ZodNumber>;
+    body_font_size: z.ZodDefault<z.ZodNumber>;
+}, z.core.$strict>;
+declare const WelcomeConfigSchema: z.ZodObject<{
+    channel_id: z.ZodString;
+    title_template: z.ZodDefault<z.ZodString>;
+    description_template: z.ZodDefault<z.ZodString>;
+    message_template: z.ZodDefault<z.ZodString>;
+    mode: z.ZodDefault<z.ZodEnum<{
+        embed: "embed";
+        card: "card";
+    }>>;
+    member_index_mode: z.ZodDefault<z.ZodEnum<{
+        include_bots: "include_bots";
+        exclude_bots: "exclude_bots";
+    }>>;
+    join_field_label: z.ZodDefault<z.ZodString>;
+    join_timezone: z.ZodDefault<z.ZodString>;
+    buttons: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        target: z.ZodEnum<{
+            url: "url";
+            channel: "channel";
+        }>;
+        value: z.ZodString;
+        emoji: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    }, z.core.$strip>>>;
+    footer_text: z.ZodDefault<z.ZodString>;
+    thread_name_template: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    card: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        background_image: z.ZodString;
+        font_path: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        font_family: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        title_template: z.ZodDefault<z.ZodString>;
+        subtitle_template: z.ZodDefault<z.ZodString>;
+        body_template: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        text_color: z.ZodDefault<z.ZodString>;
+        accent_color: z.ZodDefault<z.ZodString>;
+        overlay_color: z.ZodDefault<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        avatar_border_color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        avatar_offset_x: z.ZodDefault<z.ZodNumber>;
+        avatar_offset_y: z.ZodDefault<z.ZodNumber>;
+        title_offset_x: z.ZodDefault<z.ZodNumber>;
+        title_offset_y: z.ZodDefault<z.ZodNumber>;
+        title_font_size: z.ZodDefault<z.ZodNumber>;
+        subtitle_offset_x: z.ZodDefault<z.ZodNumber>;
+        subtitle_offset_y: z.ZodDefault<z.ZodNumber>;
+        subtitle_font_size: z.ZodDefault<z.ZodNumber>;
+        body_offset_x: z.ZodDefault<z.ZodNumber>;
+        body_offset_y: z.ZodDefault<z.ZodNumber>;
+        body_font_size: z.ZodDefault<z.ZodNumber>;
+    }, z.core.$strict>>>;
+}, z.core.$strict>;
 export declare const RoleAssignmentSchema: z.ZodObject<{
     id: z.ZodString;
     label: z.ZodString;
-    emoji: z.ZodOptional<z.ZodString>;
+    emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodString>;
     assignOnJoin: z.ZodDefault<z.ZodBoolean>;
 }, z.core.$strip>;
@@ -11,14 +84,14 @@ export declare const RoleAssignmentsConfigSchema: z.ZodDefault<z.ZodObject<{
     autoAssign: z.ZodDefault<z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         label: z.ZodString;
-        emoji: z.ZodOptional<z.ZodString>;
+        emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         description: z.ZodOptional<z.ZodString>;
         assignOnJoin: z.ZodDefault<z.ZodBoolean>;
     }, z.core.$strip>>>;
     reactions: z.ZodDefault<z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         label: z.ZodString;
-        emoji: z.ZodOptional<z.ZodString>;
+        emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         description: z.ZodOptional<z.ZodString>;
         assignOnJoin: z.ZodDefault<z.ZodBoolean>;
     }, z.core.$strip>>>;
@@ -32,13 +105,13 @@ declare const VerifyConfigSchema: z.ZodObject<{
     }>>;
     prompt: z.ZodDefault<z.ZodString>;
     message_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    emoji: z.ZodOptional<z.ZodString>;
+    emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strip>;
 export declare const RolesPanelConfigSchema: z.ZodObject<{
     channel_id: z.ZodString;
     style: z.ZodDefault<z.ZodEnum<{
-        reactions: "reactions";
         buttons: "buttons";
+        reactions: "reactions";
         select: "select";
     }>>;
     roles: z.ZodDefault<z.ZodArray<z.ZodObject<{
@@ -68,15 +141,37 @@ export declare const IntroduceConfigSchema: z.ZodObject<{
     embed_title: z.ZodDefault<z.ZodString>;
     footer_text: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strip>;
+declare const RagConfigSchema: z.ZodDefault<z.ZodObject<{
+    prompts: z.ZodDefault<z.ZodObject<{
+        base: z.ZodString;
+        help: z.ZodString;
+        coach: z.ZodString;
+        chat: z.ZodString;
+    }, z.core.$strip>>;
+    feelings: z.ZodDefault<z.ZodObject<{
+        excitement: z.ZodDefault<z.ZodNumber>;
+        empathy: z.ZodDefault<z.ZodNumber>;
+        probability: z.ZodDefault<z.ZodNumber>;
+        cooldown_minutes: z.ZodDefault<z.ZodNumber>;
+        default_mode: z.ZodDefault<z.ZodEnum<{
+            help: "help";
+            coach: "coach";
+            chat: "chat";
+        }>>;
+    }, z.core.$strip>>;
+    short_term: z.ZodDefault<z.ZodObject<{
+        excluded_channels: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>>;
 export declare const SettingsConfigSchema: z.ZodDefault<z.ZodObject<{
     locale: z.ZodOptional<z.ZodString>;
     timezone: z.ZodOptional<z.ZodString>;
     member_index_mode: z.ZodOptional<z.ZodString>;
     member_count_strategy: z.ZodOptional<z.ZodEnum<{
-        human_only: "human_only";
         include_bots: "include_bots";
+        human_only: "human_only";
     }>>;
-    api_base_url: z.ZodOptional<z.ZodString>;
+    api_base_url: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     show_join_alerts: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>>;
 export declare const ConfigSchema: z.ZodObject<{
@@ -98,14 +193,14 @@ export declare const ConfigSchema: z.ZodObject<{
         autoAssign: z.ZodDefault<z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             label: z.ZodString;
-            emoji: z.ZodOptional<z.ZodString>;
+            emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
             description: z.ZodOptional<z.ZodString>;
             assignOnJoin: z.ZodDefault<z.ZodBoolean>;
         }, z.core.$strip>>>;
         reactions: z.ZodDefault<z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             label: z.ZodString;
-            emoji: z.ZodOptional<z.ZodString>;
+            emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
             description: z.ZodOptional<z.ZodString>;
             assignOnJoin: z.ZodDefault<z.ZodBoolean>;
         }, z.core.$strip>>>;
@@ -143,13 +238,13 @@ export declare const ConfigSchema: z.ZodObject<{
         }>>;
         prompt: z.ZodDefault<z.ZodString>;
         message_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        emoji: z.ZodOptional<z.ZodString>;
+        emoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
     roles: z.ZodOptional<z.ZodObject<{
         channel_id: z.ZodString;
         style: z.ZodDefault<z.ZodEnum<{
-            reactions: "reactions";
             buttons: "buttons";
+            reactions: "reactions";
             select: "select";
         }>>;
         roles: z.ZodDefault<z.ZodArray<z.ZodObject<{
@@ -185,17 +280,92 @@ export declare const ConfigSchema: z.ZodObject<{
         timezone: z.ZodOptional<z.ZodString>;
         member_index_mode: z.ZodOptional<z.ZodString>;
         member_count_strategy: z.ZodOptional<z.ZodEnum<{
-            human_only: "human_only";
             include_bots: "include_bots";
+            human_only: "human_only";
         }>>;
-        api_base_url: z.ZodOptional<z.ZodString>;
+        api_base_url: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         show_join_alerts: z.ZodOptional<z.ZodBoolean>;
     }, z.core.$strip>>;
+    welcome: z.ZodOptional<z.ZodObject<{
+        channel_id: z.ZodString;
+        title_template: z.ZodDefault<z.ZodString>;
+        description_template: z.ZodDefault<z.ZodString>;
+        message_template: z.ZodDefault<z.ZodString>;
+        mode: z.ZodDefault<z.ZodEnum<{
+            embed: "embed";
+            card: "card";
+        }>>;
+        member_index_mode: z.ZodDefault<z.ZodEnum<{
+            include_bots: "include_bots";
+            exclude_bots: "exclude_bots";
+        }>>;
+        join_field_label: z.ZodDefault<z.ZodString>;
+        join_timezone: z.ZodDefault<z.ZodString>;
+        buttons: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            target: z.ZodEnum<{
+                url: "url";
+                channel: "channel";
+            }>;
+            value: z.ZodString;
+            emoji: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+        }, z.core.$strip>>>;
+        footer_text: z.ZodDefault<z.ZodString>;
+        thread_name_template: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        card: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            background_image: z.ZodString;
+            font_path: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            font_family: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            title_template: z.ZodDefault<z.ZodString>;
+            subtitle_template: z.ZodDefault<z.ZodString>;
+            body_template: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            text_color: z.ZodDefault<z.ZodString>;
+            accent_color: z.ZodDefault<z.ZodString>;
+            overlay_color: z.ZodDefault<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+            avatar_border_color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            avatar_offset_x: z.ZodDefault<z.ZodNumber>;
+            avatar_offset_y: z.ZodDefault<z.ZodNumber>;
+            title_offset_x: z.ZodDefault<z.ZodNumber>;
+            title_offset_y: z.ZodDefault<z.ZodNumber>;
+            title_font_size: z.ZodDefault<z.ZodNumber>;
+            subtitle_offset_x: z.ZodDefault<z.ZodNumber>;
+            subtitle_offset_y: z.ZodDefault<z.ZodNumber>;
+            subtitle_font_size: z.ZodDefault<z.ZodNumber>;
+            body_offset_x: z.ZodDefault<z.ZodNumber>;
+            body_offset_y: z.ZodDefault<z.ZodNumber>;
+            body_font_size: z.ZodDefault<z.ZodNumber>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
+    rag: z.ZodOptional<z.ZodDefault<z.ZodObject<{
+        prompts: z.ZodDefault<z.ZodObject<{
+            base: z.ZodString;
+            help: z.ZodString;
+            coach: z.ZodString;
+            chat: z.ZodString;
+        }, z.core.$strip>>;
+        feelings: z.ZodDefault<z.ZodObject<{
+            excitement: z.ZodDefault<z.ZodNumber>;
+            empathy: z.ZodDefault<z.ZodNumber>;
+            probability: z.ZodDefault<z.ZodNumber>;
+            cooldown_minutes: z.ZodDefault<z.ZodNumber>;
+            default_mode: z.ZodDefault<z.ZodEnum<{
+                help: "help";
+                coach: "coach";
+                chat: "chat";
+            }>>;
+        }, z.core.$strip>>;
+        short_term: z.ZodDefault<z.ZodObject<{
+            excluded_channels: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 export type BotConfig = z.infer<typeof ConfigSchema>;
 export type VerifyConfig = z.infer<typeof VerifyConfigSchema>;
 export type RolesPanelConfig = z.infer<typeof RolesPanelConfigSchema>;
 export type IntroduceConfig = z.infer<typeof IntroduceConfigSchema>;
 export type IntroduceSchemaConfig = z.infer<typeof IntroduceSchemaConfigSchema>;
+export type WelcomeConfig = z.infer<typeof WelcomeConfigSchema>;
+export type WelcomeCardConfig = z.infer<typeof WelcomeCardConfigSchema>;
+export type RagConfig = z.infer<typeof RagConfigSchema>;
 export {};
 //# sourceMappingURL=schema.d.ts.map

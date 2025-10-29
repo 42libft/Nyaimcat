@@ -1,1 +1,1 @@
-{"version":3,"file":"roles.d.ts","sourceRoot":"","sources":["../../../src/discord/commands/roles.ts"],"names":[],"mappings":"AAQA,OAAO,KAAK,EAAyB,kBAAkB,EAAE,MAAM,SAAS,CAAC;AAuIzE,eAAO,MAAM,YAAY,EAAE,kBAG1B,CAAC"}
+{"version":3,"file":"roles.d.ts","sourceRoot":"","sources":["../../../src/discord/commands/roles.ts"],"names":[],"mappings":"AASA,OAAO,KAAK,EAAyB,kBAAkB,EAAE,MAAM,SAAS,CAAC;AAuIzE,eAAO,MAAM,YAAY,EAAE,kBAG1B,CAAC"}

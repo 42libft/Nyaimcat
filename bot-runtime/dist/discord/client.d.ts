@@ -25,18 +25,28 @@ export declare class DiscordRuntime {
     private presenceManager;
     private permissionMonitor;
     private escl;
+    private ragClient;
+    private ragConfig;
+    private ragExcludedChannels;
+    private handledMentionMessageQueue;
+    private handledMentionMessageSet;
     constructor(options: DiscordClientOptions);
     start(): Promise<void>;
     applyConfigUpdate(config: BotConfig, context?: {
         changedSections?: string[];
         hash?: string;
     }): void;
+    private syncRagConfig;
+    private markMentionHandled;
     getClient(): Client<boolean>;
     private registerEventHandlers;
     private registerSlashCommands;
     private buildCommandContext;
     private handleChatCommand;
     private handleAutocomplete;
+    private forwardMessageToRag;
+    private respondToMention;
+    private hasExistingMentionReply;
     private handleEsclAccountModal;
 }
 //# sourceMappingURL=client.d.ts.map

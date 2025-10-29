@@ -283,9 +283,10 @@ const helpCommandConfigs = [
     choiceName: "/introduce",
     title: "**/introduce**",
     summary: "自己紹介モーダルを開き、設定済みチャンネルへ投稿します。",
-    usage: ["`/introduce`"],
+    usage: ["`/introduce [image:<画像>]`"],
     notes: [
       "モーダルの入力項目はダッシュボードで設定したスキーマに従います。",
+      "画像を添付すると自己紹介の埋め込み画像として利用し、未指定時はユーザーアイコンをサムネイルに使用します（最大 8MB）。",
       "投稿先チャンネルやメッセージ形式は introduceManager が管理します。",
     ],
   },
