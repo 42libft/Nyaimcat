@@ -7,8 +7,7 @@
 - その他: `plan.md` の進捗メモ、`tasks.md` のセッションタスクリスト、`.workflow-sessions/01-05` ドキュメントを更新。
 
 ## リリースノート案
-- Orchestrator セッション初回を開始し、Plan Reader〜Repo Rebuilder までの成果を `.workflow-sessions/20251031_codex-autonomous-workflow/` に記録。Reflection / Meta / Commit 手順を本リポジトリで検証中。
+- Orchestrator セッション初回を開始し、Plan Reader〜Meta Generator までの成果を `.workflow-sessions/20251031_codex-autonomous-workflow/` に記録。コミット `cd3e05d` を `main` へプッシュ済みで、Reflection / Meta / Commit 手順を本リポジトリで検証完了。
 
 ## 残タスク
-- Commit & Push フェーズで差分レビュー・テスト要否判断・コミット作成・プッシュを完了させる。
-- Git push の成否と残課題を最終レポートおよび `session_status.json` に記録する。
+- Meta Generator が挙げたフォローアップ（Commit & Review プロンプト整備、`meta_generator.md` 更新手順追記、`session_status.json` ステート定義）を次サイクルで処理する。

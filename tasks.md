@@ -19,7 +19,7 @@
 - [x] Task Executor: `tasks.md` と `04_implementation.md` にセッション用チェックリストと実装ログを記録する
 - [x] Repo Rebuilder: `02_design.md` を更新し、必要なリポジトリ変更とテンプレート整備を完了させる
 - [x] Reflection / Meta: `docs/codex_agent_plan.md`・`05_documentation.md`・`meta_generator.md` に学びと改善案を追記する
-- [ ] Commit & Push: `03_review.md` でレビュー観点を整理し、コミット・プッシュ完了と残課題を記録する
+- [x] Commit & Push: `03_review.md` でレビュー観点を整理し、コミット・プッシュ完了と残課題を記録する
 
 ### フォローアップ候補
 - [ ] Commit & Review プロンプトを更新し、Reflection / Meta フェーズ後にコミットする手順でも破綻しないよう明示する
