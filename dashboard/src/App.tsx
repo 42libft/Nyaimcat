@@ -121,6 +121,20 @@ const App = () => {
   const api = useMemo(() => (auth?.token ? new DashboardApi(auth) : null), [auth]);
   const originalYaml = useMemo(() => toYaml(stateToConfig(originalState)), [originalState]);
   const updatedYaml = useMemo(() => toYaml(stateToConfig(draftState)), [draftState]);
+  const welcomeDraft = useMemo(() => {
+    const base = createDefaultWelcome();
+    const current = draftState?.welcome;
+    if (!current) {
+      return base;
+    }
+    return {
+      ...base,
+      ...current,
+      card: current.card
+        ? { ...base.card, ...current.card }
+        : base.card,
+    };
+  }, [draftState]);
 
   const handleLogin = (settings: AuthSettings) => {
     setError(null);
@@ -557,20 +571,6 @@ const App = () => {
     }
   };
 
-  const welcomeDraft = useMemo(() => {
-    const base = createDefaultWelcome();
-    const current = draftState?.welcome;
-    if (!current) {
-      return base;
-    }
-    return {
-      ...base,
-      ...current,
-      card: current.card
-        ? { ...base.card, ...current.card }
-        : base.card,
-    };
-  }, [draftState]);
   const guidelineDraft = draftState.guideline ?? createDefaultGuideline();
   const verifyDraft = draftState.verify ?? createDefaultVerify();
   const rolesDraft = draftState.roles ?? createDefaultRoles();
