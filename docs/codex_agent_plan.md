@@ -134,6 +134,21 @@
 - `.github/workflows/codex-queue-harness.yml` を追加し、`main` ブランチへの push / PR と毎日 03:00 UTC のスケジュールで `npm run codex-queue-harness` を自動実行するようにした。
 - CodexExecutionQueue のリトライ挙動を CI で常時検証できるようになり、ハーネス失敗時は GitHub Actions の結果で異常を検知できる体制へ移行した。
 
+## 最新の進捗（2025-11-03）
+- `.codex/prompts/` に自己駆動プロンプト 7 点（Plan Reader / Task Executor / Repo Rebuilder / Commit & Review / Reflection Logger / Meta Generator / Orchestrator）を追加し、各エージェントの入力・出力・更新対象を定義した。
+- Plan Reader → Task Executor → Repo Rebuilder → Commit & Review → Reflection Logger → Meta Generator のシーケンスを Orchestrator が制御する運用モデルを確立した。
+- `plan.md` / `tasks.md` / `.workflow-sessions/.template/` の連携を明示し、Reflection Logger と Meta Generator が振り返り・改善サイクルを継続できるようにした。
+- 改善タスクとして、プロンプト間の依存関係図と重複入力整理を Meta Generator の改善メモに登録。
+- `scripts/create_workflow_session.py` を追加し、`.workflow-sessions/.template/` のコピーと `session_status.json` のタイムスタンプ更新を自動化。ガイド類に使用手順を追記し、完全自動のセッション開始フローを実現した。
+- `.codex/prompts/relationships.md` に各プロンプトの依存関係・入出力テーブルを整理し、Meta Generator の改善メモを消化した。
+- Orchestrator プロンプトを更新し、セッションディレクトリが存在しない場合に `scripts/create_workflow_session.py` を自動実行してからワークフローを進行するようにした。
+
+## 最新の進捗（2025-10-31 Orchestrator セッション）
+- セッション `20251031_codex-autonomous-workflow` を起動し、Plan Reader／Task Executor／Repo Rebuilder の各フェーズを実行して `.workflow-sessions/` 配下の 01〜05 テンプレートを実データで埋めた。
+- `plan.md` と `tasks.md` にセッション専用の進捗・チェックリストを追加し、長期計画と実行ログが同期する状態を確認した。
+- `session_status.json` のステート遷移と参照ファイル一覧を更新し、後続フェーズ（Reflection / Meta / Commit）の準備を整えた。
+- メタ学習用の新規ドキュメント `meta_generator.md` を作成予定とし、改善提案の集約先を明確にした。
+
 ## 最新の進捗（2025-10-17）
 - Codex 実行結果通知を刷新し、Embed の詳細化・stdout/stderr の分割送信・履歴ファイルリンク・ログ添付を行った。フォローアップボタン経由で `CodexFollowUpManager` が Inbox 用 Markdown を生成し、即座に `/work start` へ連携できる。
 - `CodexProgressNotifier` により長時間実行時のフォローアップ通知を導入し、ヘルスサマリと合わせて進捗を共有できるようにした。
