@@ -21,7 +21,22 @@
 - [x] Reflection / Meta: `docs/codex_agent_plan.md`・`05_documentation.md`・`meta_generator.md` に学びと改善案を追記する
 - [x] Commit & Push: `03_review.md` でレビュー観点を整理し、コミット・プッシュ完了と残課題を記録する
 
+## 2025-10-31 Orchestrator 再実行（20251031_codex-autonomous-workflow-1）
+- [ ] Plan / Tasks / Workflow ドキュメントを本セッションの進捗で更新する（`plan.md`、`docs/codex_agent_plan.md`、`.workflow-sessions/` 各ファイルなど）
+  - [x] Plan Reader の要約を `01_requirements.md` と `session_status.json` に反映済みであることを確認
+  - [x] Task Executor / Repo Rebuilder / Reflection / Meta の成果を `02_design.md`〜`05_documentation.md` に順次追記
+- [ ] `commit_and_review.md` を改訂し、Reflection / Meta フェーズ後でもコミット手順が成立するよう手順とチェックを追記する
+  - [x] Reflection 後に再確認する差分チェック手順を追記
+  - [x] コミット前チェックリストに Meta 反映有無・通知要否を含める
+- [ ] `orchestrator.md` / `reflection_logger.md` に `meta_generator.md` の更新手順・期待出力を明文化する
+  - [x] Orchestrator の Meta Generator セクションで入力・出力ファイルと通知連携を具体化
+  - [x] Reflection Logger の出力に `meta_generator.md` 更新責務を明記し、`tasks.md` へのフィードバック手順を整理
+- [ ] `.workflow-sessions/.template/session_status.json` にステート一覧と説明を追加し、`session_status` 運用を標準化する
+  - [x] 既存ステート（`planning` / `in_progress` / `review` / `blocked` / `completed` / `cancelled` など）の定義をテンプレート `notes` に追記
+  - [x] ステートガイドラインを `meta_generator.md` のフォローアップ要求と整合させる
+
 ### フォローアップ候補
-- [ ] Commit & Review プロンプトを更新し、Reflection / Meta フェーズ後にコミットする手順でも破綻しないよう明示する
-- [ ] Orchestrator / Reflection Logger プロンプトへ `meta_generator.md` 更新手順と期待内容を追記する
-- [ ] `session_status.json` のステート一覧と説明をテンプレートもしくは AGENTS.md に記載する
+- [x] Commit & Review プロンプトを更新し、Reflection / Meta フェーズ後にコミットする手順でも破綻しないよう明示する
+- [x] Orchestrator / Reflection Logger プロンプトへ `meta_generator.md` 更新手順と期待内容を追記する
+- [x] `session_status.json` のステート一覧と説明をテンプレートもしくは AGENTS.md に記載する
+- [ ] Task Executor プロンプトの参照先（`docs/task.md`）が未整備のため、ドキュメント追加または参照先修正を次サイクルで検討する

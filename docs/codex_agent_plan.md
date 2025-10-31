@@ -143,6 +143,11 @@
 - `.codex/prompts/relationships.md` に各プロンプトの依存関係・入出力テーブルを整理し、Meta Generator の改善メモを消化した。
 - Orchestrator プロンプトを更新し、セッションディレクトリが存在しない場合に `scripts/create_workflow_session.py` を自動実行してからワークフローを進行するようにした。
 
+## 最新の進捗（2025-10-31 Orchestrator 再実行）
+- `.codex/prompts/commit_and_review.md` を更新し、Reflection / Meta フェーズ後の差分再確認と通知判断を明示。`03_review.md` との連携手順を整理した。
+- `.codex/prompts/reflection_logger.md` と `.codex/prompts/orchestrator.md` に Meta Generator への入力整理・通知フローを追記し、`meta_generator.md` / `tasks.md` へのフィードバック動線を統一した。
+- `.workflow-sessions/.template/session_status.json` にステート一覧と `notes` 記入ガイドを追加し、セッションログの記載方法を標準化。`tasks.md` ではサブチェックリスト化により各フェーズの完了条件を明確化した。
+
 ## 最新の進捗（2025-10-31 Orchestrator セッション）
 - セッション `20251031_codex-autonomous-workflow` を起動し、Plan Reader／Task Executor／Repo Rebuilder の各フェーズを実行して `.workflow-sessions/` 配下の 01〜05 テンプレートを実データで埋めた。
 - `plan.md` と `tasks.md` にセッション専用の進捗・チェックリストを追加し、長期計画と実行ログが同期する状態を確認した。
