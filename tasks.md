@@ -39,4 +39,9 @@
 - [x] Commit & Review プロンプトを更新し、Reflection / Meta フェーズ後にコミットする手順でも破綻しないよう明示する
 - [x] Orchestrator / Reflection Logger プロンプトへ `meta_generator.md` 更新手順と期待内容を追記する
 - [x] `session_status.json` のステート一覧と説明をテンプレートもしくは AGENTS.md に記載する
-- [ ] Task Executor プロンプトの参照先（`docs/task.md`）が未整備のため、ドキュメント追加または参照先修正を次サイクルで検討する
+- [x] Task Executor プロンプトの参照先（`docs/task.md`）が未整備のため、ドキュメント追加または参照先修正を次サイクルで検討する
+
+## 2025-11-01 Orchestrator セッション
+- [x] `scripts/create_workflow_session.py` の `slugify` で空白をハイフンへ正規化し、`--dry-run` で挙動確認する
+- [x] Codex 自動運用タスクの俯瞰セクションを `docs/task.md` に追加し、Task Executor の参照先を補強する
+- [x] サイクル成果を `plan.md` / `docs/codex_agent_plan.md` / `meta_generator.md` へ反映し、フォローアップタスクとメタ学習を整理する

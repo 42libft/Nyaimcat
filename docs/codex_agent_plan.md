@@ -143,6 +143,12 @@
 - `.codex/prompts/relationships.md` に各プロンプトの依存関係・入出力テーブルを整理し、Meta Generator の改善メモを消化した。
 - Orchestrator プロンプトを更新し、セッションディレクトリが存在しない場合に `scripts/create_workflow_session.py` を自動実行してからワークフローを進行するようにした。
 
+## 最新の進捗（2025-11-01 Orchestrator セッション）
+- `scripts/create_workflow_session.py` の `slugify` から空白許容を除外し、スラッグ生成時に自動でハイフンへ正規化されるよう修正。`--dry-run` で `20251101_demo-session` が出力されることを確認した。
+- `docs/task.md` に「Codex 自動運用ワークフロー」セクションを追加し、Orchestrator サイクルのゴール・現状・優先タスク・フォローアップを整理。Task Executor が参照すべき資料として機能する。
+- `tasks.md` に 2025-11-01 セッションのチェックリストを作成し、slugify 修正とドキュメント整備を完了した。
+- `.workflow-sessions/20251101_codex-autonomous-workflow/` 配下の 01〜05 ドキュメントと `session_status.json` を更新し、各フェーズの記録・判断を残した。
+
 ## 最新の進捗（2025-10-31 Orchestrator 再実行）
 - `.codex/prompts/commit_and_review.md` を更新し、Reflection / Meta フェーズ後の差分再確認と通知判断を明示。`03_review.md` との連携手順を整理した。
 - `.codex/prompts/reflection_logger.md` と `.codex/prompts/orchestrator.md` に Meta Generator への入力整理・通知フローを追記し、`meta_generator.md` / `tasks.md` へのフィードバック動線を統一した。

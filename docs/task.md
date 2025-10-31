@@ -1,5 +1,26 @@
 # タスクリスト
 
+## Codex 自動運用ワークフロー
+
+### ゴール / Definition of Done
+- Orchestrator → Meta Generator までの各フェーズを 1 サイクルで完了し、`.workflow-sessions/<session>/`・`plan.md`・`tasks.md`・`docs/codex_agent_plan.md`・`meta_generator.md` が常に同期している。
+- セッション生成スクリプトや関連ユーティリティが共通スラッグ規則を強制し、手動操作による名称揺らぎを排除できる。
+- セッション完了時点で次サイクルに渡す改善点・フォローアップが整理され、Discord 通知やタスク管理に連携できる。
+
+### 現状サマリ
+- 7 つの専門プロンプトと `.codex/prompts/relationships.md` を整備し、Orchestrator から各フェーズを順番に呼び出す運用フローが確立済み。
+- `.workflow-sessions/.template` と `scripts/create_workflow_session.py` でセッション雛形を生成できるが、スラッグの空白処理が不完全で命名揺らぎが発生していた。
+- Task Executor が参照する Codex 用タスク整理は未整備で、ESCL 関連タスクに偏っている。
+
+### 優先タスク（2025-11-01）
+- [x] `scripts/create_workflow_session.py` の `slugify` で空白をハイフンへ正規化し、`--dry-run` での出力を確認する
+- [x] Codex 自動運用タスクを俯瞰する本セクションを整備し、Task Executor の入力資料として活用できるようにする
+- [x] セッション成果を `plan.md` / `docs/codex_agent_plan.md` / `meta_generator.md` へ反映し、フォローアップと学習事項を記録する
+
+### フォローアップ検討
+- [ ] セッション初期化スクリプトに `meta_generator.md` など必須ドキュメントの雛形生成を組み込み、ドキュメント更新漏れを防ぐ
+- [ ] Discord 通知ロジック（`DiscordActions`）を活用したセッション完了報告の自動化を検討し、必要な環境変数ガイドを Docs に整理する
+
 ## ESCL スクリム自動エントリー Bot v2
 
 ### ゴール / Definition of Done
