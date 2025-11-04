@@ -134,6 +134,11 @@
 - `.github/workflows/codex-queue-harness.yml` を追加し、`main` ブランチへの push / PR と毎日 03:00 UTC のスケジュールで `npm run codex-queue-harness` を自動実行するようにした。
 - CodexExecutionQueue のリトライ挙動を CI で常時検証できるようになり、ハーネス失敗時は GitHub Actions の結果で異常を検知できる体制へ移行した。
 
+## 最新の進捗（2025-11-04 Orchestrator セッション）
+- `bot-runtime/config/config.yaml` の `member_count_strategy` を `include_bots` へ修正し、Welcome カードの `title_template` を空文字から `ようこそ {{guild_name}} へ` へ更新した。`loadConfig` の実行で Zod バリデーションをパスすることを確認。
+- `.workflow-sessions/20251104_codex-autonomous-workflow/` に各フェーズログ（要件・設計・実装・レビュー・ドキュメント）を追記し、自己駆動サイクルのトレーサビリティを確保した。
+- フォローアップとして Dashboard 側の空文字バリデーション追加と、Schema 側のトリム／デフォルト適用ロジックを Meta Generator で優先順位付けする。
+
 ## 最新の進捗（2025-11-03）
 - `.codex/prompts/` に自己駆動プロンプト 7 点（Plan Reader / Task Executor / Repo Rebuilder / Commit & Review / Reflection Logger / Meta Generator / Orchestrator）を追加し、各エージェントの入力・出力・更新対象を定義した。
 - Plan Reader → Task Executor → Repo Rebuilder → Commit & Review → Reflection Logger → Meta Generator のシーケンスを Orchestrator が制御する運用モデルを確立した。

@@ -73,6 +73,16 @@
 - **メモ**
   - CLI から `npx ts-node --transpile-only -e "(async () => { const result = await loadConfig(); ... })();"` を実行してホットリロードと起動時検証が正常に通ることを確認済み。
 
+## 2025-11 設定バリデーション強化（member_count_strategy / 再発防止）
+- **目的**: `settings.member_count_strategy` の不正値や空テンプレート入力による起動失敗を防ぎ、設定変更時の安定性を高める。
+- **進捗**
+  - [x] `config.yaml` の `member_count_strategy` を `include_bots` へ修正し、実環境の意図とスキーマ許容値を一致させた。（2025-11-04）
+  - [x] `npx ts-node -e "const { loadConfig } = require('./src/config/loader'); ..."` を実行し、`loadConfig` が `ok: true` を返すことを確認した。（2025-11-04）
+- **フォローアップ**
+  - [ ] Dashboard 設定フォームと API で `member_count_strategy` / `title_template` の空文字や未定義値をブロックするバリデーションを追加する。
+  - [ ] `schema.ts` 側でトリム＋デフォルト適用のサニタイズを導入し、空文字のままでも安全に補正できるようにする。
+  - [ ] `package.json` に `config:validate` スクリプトを追加し、CI / ローカルで設定バリデーションを即座に実行できるようにする。
+
 ## 中期課題（バックエンド・フロントエンド）
 - **管理 API の永続化と監査拡張**  
   - SQLite/Postgres 等のストレージ導入、監査ログ長期保存、エクスポートフィルタの強化。  

@@ -45,3 +45,17 @@
 - [x] `scripts/create_workflow_session.py` の `slugify` で空白をハイフンへ正規化し、`--dry-run` で挙動確認する
 - [x] Codex 自動運用タスクの俯瞰セクションを `docs/task.md` に追加し、Task Executor の参照先を補強する
 - [x] サイクル成果を `plan.md` / `docs/codex_agent_plan.md` / `meta_generator.md` へ反映し、フォローアップタスクとメタ学習を整理する
+
+## 2025-11-04 Orchestrator セッション
+- [x] Plan Reader: 設定不整合（member_count_strategy / welcome.card.title_template）を洗い出し、`01_requirements.md` と `session_status.json` を更新する
+- [x] Task Executor: `tasks.md` に本セッション用チェックリストを追加し、`04_implementation.md` に実装ログ枠を整備する
+- [x] Repo Rebuilder: `bot-runtime/config/config.yaml` をスキーマ準拠（member_count_strategy=include_bots, card.title_template 非空）へ修正する
+- [x] Commit & Review: `npx ts-node` 経由で設定ロードを検証し、`03_review.md` に結果とリスクを記録する
+- [x] Reflection Logger: `docs/codex_agent_plan.md` と `05_documentation.md` に今回の成果と残課題を記録する
+- [x] Meta Generator: `plan.md` / `docs/plans.md` / `meta_generator.md` へ改善点と次アクションを反映する
+- [ ] Git: コミット作成と `git push` を実施（失敗時は原因と再試行手順を `tasks.md` へ追記）
+
+### フォローアップ（2025-11-04 セッション）
+- [ ] Dashboard 設定フォームと管理 API に `member_count_strategy` / `welcome.card.title_template` の空文字バリデーションを追加する
+- [ ] `bot-runtime/src/config/schema.ts` に文字列トリム＋デフォルト適用のサニタイズ処理を導入する
+- [ ] `bot-runtime/package.json` に `config:validate` スクリプトを追加し、README / Docs へ利用方法を記載する

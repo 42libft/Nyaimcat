@@ -22,7 +22,16 @@
 - セッション初期化スクリプトに `.workflow-sessions/<session>/05_documentation.md` などの雛形へ初期説明文を挿入し、テンプレートから実用メモへの書き換えを漏れなく誘導する。
 - Codex 自動運用セクションと長期 `docs/plans.md` のバックログ整理を定期的に同期するため、Reflection フェーズで確認するチェックリストを作成する。
 
+## 改善提案（2025-11-04）
+- Dashboard 設定フォームと管理 API に `member_count_strategy` / `welcome.card.title_template` など必須フィールドの空文字ガードを追加し、設定ファイルへ不正値が保存されないようにする。
+- `bot-runtime/src/config/schema.ts` で文字列項目のトリムおよび空文字時のデフォルト適用を導入し、バリデーションエラーを未然に防ぐ。
+- `bot-runtime/package.json` へ `config:validate` スクリプト（`ts-node src/config/loader.ts`）を追加し、CI やローカルで簡易検証できるようにする。
+- `.workflow-sessions/` のテンプレートを現行の実施内容へ即書き換える運用を定着させるため、Reflection Logger がチェックできる簡易チェックリスト案を追加する。
+
 ## 優先度順フォローアップ（更新）
-1. `scripts/create_workflow_session.py` の slugify 回帰テストを追加し、空白・全角文字のケースを固定化する。（優先度: 中）
-2. セッション初期化スクリプトでドキュメントテンプレートにガイド文を埋め込み、Reflection Logger が毎回テンプレートから書き換える手間を削減する。（優先度: 中）
-3. Codex 運用タスクセクションで扱うバックログと `docs/plans.md` の優先課題を突き合わせるチェックリストを Reflection Logger に追加する。（優先度: 低）
+1. Dashboard 設定フォーム／API へ空文字バリデーションを実装し、`config.yaml` が再び不正値を含まないようにする。（優先度: 高）
+2. `schema.ts` に文字列トリム＆デフォルト値適用のサニタイズレイヤーを追加し、入力時の無効値を吸収する。（優先度: 高）
+3. `bot-runtime` に `config:validate` スクリプトを追加し、CI / ローカルで設定バリデーションを即時実行できるようにする。（優先度: 中）
+4. `scripts/create_workflow_session.py` の slugify 回帰テストを追加し、空白・全角文字のケースを固定化する。（優先度: 中）
+5. セッション初期化スクリプトでドキュメントテンプレートにガイド文を埋め込み、Reflection Logger が毎回テンプレートから書き換える手間を削減する。（優先度: 中）
+6. Codex 運用タスクセクションで扱うバックログと `docs/plans.md` の優先課題を突き合わせるチェックリストを Reflection Logger に追加する。（優先度: 低）
