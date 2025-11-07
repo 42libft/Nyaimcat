@@ -206,6 +206,41 @@ interface Props {
 const convertEmptyToNull = (input: string): string | null =>
   input.trim() === '' ? null : input;
 
+const trimText = (value: string | null | undefined) => (value ?? '').trim();
+
+const validateWelcomeConfig = (config: WelcomeConfig): string | null => {
+  if (trimText(config.title_template).length === 0) {
+    return 'Embed のタイトルテンプレートは必須です。';
+  }
+  if (config.mode === 'card') {
+    if (!config.card) {
+      return 'カードモードの設定が見つかりません。';
+    }
+    if (trimText(config.card.title_template).length === 0) {
+      return 'Welcome カードのタイトルテンプレートは必須です。';
+    }
+    if (trimText(config.card.background_image).length === 0) {
+      return 'Welcome カードの背景画像は空にできません。';
+    }
+  }
+  return null;
+};
+
+const sanitizeWelcomePayload = (config: WelcomeConfig): WelcomeConfig => {
+  const sanitized: WelcomeConfig = {
+    ...config,
+    title_template: trimText(config.title_template),
+  };
+  if (config.card) {
+    sanitized.card = {
+      ...config.card,
+      title_template: trimText(config.card.title_template),
+      background_image: trimText(config.card.background_image),
+    };
+  }
+  return sanitized;
+};
+
 const WelcomeSection = ({ value, onChange, onSave, onPreview }: Props) => {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -332,9 +367,15 @@ const WelcomeSection = ({ value, onChange, onSave, onPreview }: Props) => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const validationError = validateWelcomeConfig(value);
+    if (validationError) {
+      setStatus(validationError);
+      return;
+    }
     setSaving(true);
     try {
-      await onSave(value);
+      const payload = sanitizeWelcomePayload(value);
+      await onSave(payload);
       setStatus('Welcome 設定を保存しました。');
     } catch (error: any) {
       setStatus(error?.message ?? '保存中にエラーが発生しました');

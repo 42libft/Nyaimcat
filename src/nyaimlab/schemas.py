@@ -81,6 +81,7 @@ class WelcomeCardConfig(BaseModel):
     )
     title_template: str = Field(
         default="Welcome to {{guild_name}}",
+        min_length=1,
         max_length=160,
         description="Primary heading rendered under the avatar. Supports template variables.",
     )
@@ -196,6 +197,18 @@ class WelcomeCardConfig(BaseModel):
             return stripped or None
         raise TypeError("font_path and font_family must be strings.")
 
+    @field_validator("title_template", mode="before")
+    @classmethod
+    def _ensure_card_title(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, str):
+            trimmed = value.strip()
+            if not trimmed:
+                raise ValueError("card.title_template must not be empty.")
+            return trimmed
+        raise TypeError("card.title_template must be a string.")
+
 
 class WelcomePreviewMember(BaseModel):
     """Sample member information used when generating previews."""
@@ -223,6 +236,7 @@ class WelcomeConfig(BaseModel):
     channel_id: str = Field(..., min_length=1)
     title_template: str = Field(
         default="ようこそ、{username} さん！",
+        min_length=1,
         description="Title template supporting Discord format placeholders.",
     )
     description_template: str = Field(
@@ -248,6 +262,18 @@ class WelcomeConfig(BaseModel):
         default=None,
         description="Canvas-based card configuration when mode is set to `card`.",
     )
+
+    @field_validator("title_template", mode="before")
+    @classmethod
+    def _sanitize_embed_title(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, str):
+            trimmed = value.strip()
+            if not trimmed:
+                raise ValueError("title_template must not be empty.")
+            return trimmed
+        raise TypeError("title_template must be a string.")
 
 
 class WelcomeEmbedPreviewField(BaseModel):
@@ -526,9 +552,8 @@ class AuditExportRequest(AuditSearchRequest):
 
 
 class MemberCountStrategy(str, Enum):
-    ALL_MEMBERS = "all_members"
     HUMAN_ONLY = "human_only"
-    BOOSTERS_PRIORITY = "boosters_priority"
+    INCLUDE_BOTS = "include_bots"
 
 
 class SettingsPayload(BaseModel):
@@ -542,6 +567,25 @@ class SettingsPayload(BaseModel):
     member_count_strategy: MemberCountStrategy = MemberCountStrategy.HUMAN_ONLY
     api_base_url: Optional[AnyHttpUrl] = Field(default=None)
     show_join_alerts: bool = Field(default=True)
+
+    @field_validator("member_count_strategy", mode="before")
+    @classmethod
+    def _normalize_member_count_strategy(
+        cls, value: Any
+    ) -> MemberCountStrategy:
+        if value is None:
+            return MemberCountStrategy.HUMAN_ONLY
+        if isinstance(value, MemberCountStrategy):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in ("human_only", "include_bots"):
+                return MemberCountStrategy(normalized)
+            if normalized in ("all_members", "boosters_priority"):
+                return MemberCountStrategy.INCLUDE_BOTS
+        raise ValueError(
+            "member_count_strategy must be either human_only or include_bots."
+        )
 
 
 class RagMode(str, Enum):

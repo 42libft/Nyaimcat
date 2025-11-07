@@ -139,6 +139,12 @@
 - `.workflow-sessions/20251104_codex-autonomous-workflow/` に各フェーズログ（要件・設計・実装・レビュー・ドキュメント）を追記し、自己駆動サイクルのトレーサビリティを確保した。
 - フォローアップとして Dashboard 側の空文字バリデーション追加と、Schema 側のトリム／デフォルト適用ロジックを Meta Generator で優先順位付けする。
 
+## 最新の進捗（2025-11-07 Orchestrator セッション）
+- Dashboard `SettingsSection` で `member_count_strategy` を `human_only | include_bots` のみに制限し、`WelcomeSection` に Embed/Card タイトルと背景画像のローカルバリデーションを追加した。
+- FastAPI `schemas.py` の `MemberCountStrategy` 列挙を Bot ランタイムと揃え、Welcome タイトルをトリム＋必須化。旧値（`all_members` / `boosters_priority`）は自動的に `include_bots` へフォールバックするようにした。
+- bot-runtime の Zod スキーマに `trimToUndefined` ヘルパーを導入し、空文字が渡っても既定値へ戻るようサニタイズ。`npm run config:validate`（新規 CLI）で `loadConfig` の検証をワンコマンド化した。
+- `plan.md` / `docs/plans.md` / `tasks.md` / `.workflow-sessions/20251107_*` に成果を同期し、未完タスクは Dashboard / CI テスト拡張として整理した。
+
 ## 最新の進捗（2025-11-03）
 - `.codex/prompts/` に自己駆動プロンプト 7 点（Plan Reader / Task Executor / Repo Rebuilder / Commit & Review / Reflection Logger / Meta Generator / Orchestrator）を追加し、各エージェントの入力・出力・更新対象を定義した。
 - Plan Reader → Task Executor → Repo Rebuilder → Commit & Review → Reflection Logger → Meta Generator のシーケンスを Orchestrator が制御する運用モデルを確立した。

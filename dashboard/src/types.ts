@@ -141,7 +141,7 @@ export interface ScrimConfig {
 }
 
 export type Locale = 'ja-JP' | 'en-US';
-export type MemberCountStrategy = 'all_members' | 'human_only' | 'boosters_priority';
+export type MemberCountStrategy = 'human_only' | 'include_bots';
 
 export interface SettingsPayload {
   locale: Locale;

@@ -1,11 +1,16 @@
 import { FormEvent, useState } from 'react';
-import { SettingsPayload } from '../types';
+import { MemberCountStrategy, SettingsPayload } from '../types';
 
 interface Props {
   value: Partial<SettingsPayload>;
   onChange: (value: Partial<SettingsPayload>) => void;
   onSave: (value: Partial<SettingsPayload>) => Promise<void>;
 }
+
+const MEMBER_COUNT_OPTIONS: MemberCountStrategy[] = ['human_only', 'include_bots'];
+
+const isMemberCountStrategy = (input: string): input is MemberCountStrategy =>
+  MEMBER_COUNT_OPTIONS.includes(input as MemberCountStrategy);
 
 const SettingsSection = ({ value, onChange, onSave }: Props) => {
   const [saving, setSaving] = useState(false);
@@ -16,6 +21,11 @@ const SettingsSection = ({ value, onChange, onSave }: Props) => {
       const input = event.currentTarget;
       if (field === 'show_join_alerts') {
         onChange({ ...value, show_join_alerts: (input as HTMLInputElement).checked });
+        return;
+      }
+      if (field === 'member_count_strategy') {
+        const nextValue = isMemberCountStrategy(input.value) ? input.value : 'human_only';
+        onChange({ ...value, member_count_strategy: nextValue });
         return;
       }
       onChange({ ...value, [field]: input.value } as Partial<SettingsPayload>);
@@ -80,8 +90,7 @@ const SettingsSection = ({ value, onChange, onSave }: Props) => {
             onChange={handleField('member_count_strategy')}
           >
             <option value="human_only">人間のみ</option>
-            <option value="all_members">全メンバー</option>
-            <option value="boosters_priority">ブースター優先</option>
+            <option value="include_bots">Bot を含める</option>
           </select>
         </div>
         <div className="field" style={{ gridColumn: '1 / span 2' }}>

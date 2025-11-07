@@ -28,10 +28,18 @@
 - `bot-runtime/package.json` へ `config:validate` スクリプト（`ts-node src/config/loader.ts`）を追加し、CI やローカルで簡易検証できるようにする。
 - `.workflow-sessions/` のテンプレートを現行の実施内容へ即書き換える運用を定着させるため、Reflection Logger がチェックできる簡易チェックリスト案を追加する。
 
+## 改善提案（2025-11-07）
+- 追加した Dashboard / FastAPI のバリデーションを E2E / API テストで自動検証できるようにし、回帰検知を容易にする。
+- `npm run config:validate` を CI（GitHub Actions）の必須ジョブに組み込み、PR ごとに設定ファイルの破損を検出する。
+- README / 運用ガイドへ `config:validate` の使い方と想定フローを追記し、ヒューマンオペレーション時の迷いを減らす。
+
 ## 優先度順フォローアップ（更新）
-1. Dashboard 設定フォーム／API へ空文字バリデーションを実装し、`config.yaml` が再び不正値を含まないようにする。（優先度: 高）
-2. `schema.ts` に文字列トリム＆デフォルト値適用のサニタイズレイヤーを追加し、入力時の無効値を吸収する。（優先度: 高）
-3. `bot-runtime` に `config:validate` スクリプトを追加し、CI / ローカルで設定バリデーションを即時実行できるようにする。（優先度: 中）
-4. `scripts/create_workflow_session.py` の slugify 回帰テストを追加し、空白・全角文字のケースを固定化する。（優先度: 中）
-5. セッション初期化スクリプトでドキュメントテンプレートにガイド文を埋め込み、Reflection Logger が毎回テンプレートから書き換える手間を削減する。（優先度: 中）
-6. Codex 運用タスクセクションで扱うバックログと `docs/plans.md` の優先課題を突き合わせるチェックリストを Reflection Logger に追加する。（優先度: 低）
+1. ~~Dashboard 設定フォーム／API へ空文字バリデーションを実装し、`config.yaml` が再び不正値を含まないようにする。（優先度: 高）~~
+2. ~~`schema.ts` に文字列トリム＆デフォルト値適用のサニタイズレイヤーを追加し、入力時の無効値を吸収する。（優先度: 高）~~
+3. ~~`bot-runtime` に `config:validate` スクリプトを追加し、CI / ローカルで設定バリデーションを即時実行できるようにする。（優先度: 中）~~
+4. Dashboard / FastAPI の新バリデーションを自動テスト（E2E or API レベル）でカバーし、回帰検知を仕組み化する。（優先度: 高）
+5. `config:validate` を GitHub Actions に組み込み、PR 時に必ず実行する。（優先度: 中）
+6. README / 運用ガイドに設定検証フローと CLI の使い方を追記する。（優先度: 中）
+7. `scripts/create_workflow_session.py` の slugify 回帰テストを追加し、空白・全角文字のケースを固定化する。（優先度: 中）
+8. セッション初期化スクリプトでドキュメントテンプレートにガイド文を埋め込み、Reflection Logger が毎回テンプレートから書き換える手間を削減する。（優先度: 中）
+9. Codex 運用タスクセクションで扱うバックログと `docs/plans.md` の優先課題を突き合わせるチェックリストを Reflection Logger に追加する。（優先度: 低）

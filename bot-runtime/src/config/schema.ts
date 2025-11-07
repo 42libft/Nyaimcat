@@ -1,8 +1,18 @@
 import { z } from "zod";
 
-const SnowflakeSchema = z
-  .string()
-  .min(1, "Discord ID は空にできません");
+const trimString = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (typeof value === "string" ? value.trim() : value), schema);
+
+const trimToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed === "" ? undefined : trimmed;
+    }
+    return value;
+  }, schema);
+
+const SnowflakeSchema = z.string().min(1, "Discord ID は空にできません");
 
 const MemberIndexModeSchema = z.enum(["include_bots", "exclude_bots"]);
 
@@ -17,14 +27,16 @@ const WelcomeButtonSchema = z.object({
 
 const WelcomeCardConfigSchema = z
   .object({
-    background_image: z.string().min(1),
+    background_image: trimString(z.string().min(1)),
     font_path: z.string().min(1).nullable().optional(),
     font_family: z.string().max(120).nullable().optional(),
-    title_template: z
-      .string()
-      .min(1)
-      .max(160)
-      .default("Welcome to {{guild_name}}"),
+    title_template: trimToUndefined(
+      z
+        .string()
+        .min(1)
+        .max(160)
+        .default("Welcome to {{guild_name}}")
+    ),
     subtitle_template: z
       .string()
       .min(1)
@@ -57,11 +69,13 @@ const WelcomeCardConfigSchema = z
 const WelcomeConfigSchema = z
   .object({
     channel_id: SnowflakeSchema,
-    title_template: z
-      .string()
-      .min(1)
-      .max(256)
-      .default("ようこそ、{{username}} さん！"),
+    title_template: trimToUndefined(
+      z
+        .string()
+        .min(1)
+        .max(256)
+        .default("ようこそ、{{username}} さん！")
+    ),
     description_template: z
       .string()
       .min(1)

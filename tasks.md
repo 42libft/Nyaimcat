@@ -56,6 +56,13 @@
 - [ ] Git: コミット作成と `git push` を実施（失敗時は原因と再試行手順を `tasks.md` へ追記）
 
 ### フォローアップ（2025-11-04 セッション）
-- [ ] Dashboard 設定フォームと管理 API に `member_count_strategy` / `welcome.card.title_template` の空文字バリデーションを追加する
-- [ ] `bot-runtime/src/config/schema.ts` に文字列トリム＋デフォルト適用のサニタイズ処理を導入する
-- [ ] `bot-runtime/package.json` に `config:validate` スクリプトを追加し、README / Docs へ利用方法を記載する
+- [x] Dashboard 設定フォームと管理 API に `member_count_strategy` / `welcome.card.title_template` の空文字バリデーションを追加する
+- [x] `bot-runtime/src/config/schema.ts` に文字列トリム＋デフォルト適用のサニタイズ処理を導入する
+- [x] `bot-runtime/package.json` に `config:validate` スクリプトを追加し、README / Docs へ利用方法を記載する
+
+### 2025-11-07 作業チェックリスト
+1. [x] Dashboard: `SettingsSection` のメンバーカウント戦略を `human_only` / `include_bots` のみに絞り、`WelcomeSection` で Embed / Card タイトルが空の場合は保存前にエラー表示・サニタイズする。
+2. [x] 管理 API: `src/nyaimlab/schemas.py` で `MemberCountStrategy` を Bot ランタイムと揃え、`welcome.card.title_template` や Embed タイトルをトリム＋必須化し、旧値（`all_members` など）は安全な既定値へフォールバックさせる。
+3. [x] Bot ランタイム: `src/config/schema.ts` に文字列トリム＋デフォルト適用レイヤーを追加し、新規 CLI `npm run config:validate`（`ts-node src/cli/configValidate.ts`）で設定検証が実行できるようにする。
+4. [x] ドキュメント＆セッションログ: `.workflow-sessions/20251107_codex-autonomous-workflow/*.md`、`plan.md`、`docs/plans.md`、`docs/codex_agent_plan.md`、`meta_generator.md` へ成果と残タスクを反映する。
+5. [ ] Commit & Push: 差分レビュー、`npm --prefix bot-runtime run config:validate` 実行結果の記載、`git commit` / `git push` 完了。
