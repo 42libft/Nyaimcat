@@ -81,7 +81,6 @@ class WelcomeCardConfig(BaseModel):
     )
     title_template: str = Field(
         default="Welcome to {{guild_name}}",
-        min_length=1,
         max_length=160,
         description="Primary heading rendered under the avatar. Supports template variables.",
     )
@@ -196,19 +195,6 @@ class WelcomeCardConfig(BaseModel):
             stripped = value.strip()
             return stripped or None
         raise TypeError("font_path and font_family must be strings.")
-
-    @field_validator("title_template", mode="before")
-    @classmethod
-    def _ensure_card_title(cls, value: Any) -> Any:
-        if value is None:
-            return value
-        if isinstance(value, str):
-            trimmed = value.strip()
-            if not trimmed:
-                raise ValueError("card.title_template must not be empty.")
-            return trimmed
-        raise TypeError("card.title_template must be a string.")
-
 
 class WelcomePreviewMember(BaseModel):
     """Sample member information used when generating previews."""

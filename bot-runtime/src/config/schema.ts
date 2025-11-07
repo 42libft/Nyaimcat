@@ -30,10 +30,9 @@ const WelcomeCardConfigSchema = z
     background_image: trimString(z.string().min(1)),
     font_path: z.string().min(1).nullable().optional(),
     font_family: z.string().max(120).nullable().optional(),
-    title_template: trimToUndefined(
+    title_template: trimString(
       z
         .string()
-        .min(1)
         .max(160)
         .default("Welcome to {{guild_name}}")
     ),

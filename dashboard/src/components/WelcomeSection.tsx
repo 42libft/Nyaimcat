@@ -216,9 +216,6 @@ const validateWelcomeConfig = (config: WelcomeConfig): string | null => {
     if (!config.card) {
       return 'カードモードの設定が見つかりません。';
     }
-    if (trimText(config.card.title_template).length === 0) {
-      return 'Welcome カードのタイトルテンプレートは必須です。';
-    }
     if (trimText(config.card.background_image).length === 0) {
       return 'Welcome カードの背景画像は空にできません。';
     }
