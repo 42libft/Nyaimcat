@@ -1,8 +1,8 @@
 {
-  "state": "in_progress",
+  "state": "completed",
   "owner": "codex",
   "created_at": "2025-11-07T12:33:06.159354+00:00",
-  "updated_at": "2025-11-07T12:51:53Z",
+  "updated_at": "2025-11-07T12:58:03Z",
   "notes": [
     "このファイルはテンプレートです。新規セッション作成時に複製し、タイムスタンプと状態を更新してください。",
     "ステート一覧: planning（計画中） / in_progress（実行中） / review（レビュー中） / blocked（ブロッカー発生） / completed（完了） / cancelled（中断）。必要に応じて `notes` に理由と次アクションを追記してください。",
@@ -10,6 +10,8 @@
     "2025-11-07T12:37:20Z Plan Reader: plan.md / docs.plans.md から設定バリデーション強化タスクを抽出。Dashboard(SettingsSection/WelcomeSection), FastAPI schemas.py, bot-runtime/src/config/schema.ts, bot-runtime/package.json, 新規 src/cli/configValidate.ts を対象に、npm --prefix bot-runtime run config:validate で検証する方針。",
     "2025-11-07T12:39:58Z Task Executor: tasks.md に 5 ステップのチェックリストを追加し、Dashboard/UI・FastAPIスキーマ・bot-runtimeサニタイズ・ドキュメント更新・git commit/push の順で進める計画を共有。",
     "2025-11-07T12:46:42Z Repo Rebuilder: Dashboard(UI)・FastAPI(schemas.py)・bot-runtime(schema.ts)を更新し、member_count_strategyの列挙統一と Welcome タイトルの空文字防止を実装。npm --prefix bot-runtime run config:validate で検証済み。",
-    "2025-11-07T12:51:53Z Reflection Logger: plan/docs/plans/docs/codex_agent_plan/meta_generator/05_documentation を更新し、新タスク（E2E テスト・CI 連携・README 追記）をフォローアップへ登録。"
+    "2025-11-07T12:51:53Z Reflection Logger: plan/docs/plans/docs/codex_agent_plan/meta_generator/05_documentation を更新し、新タスク（E2E テスト・CI 連携・README 追記）をフォローアップへ登録。",
+    "2025-11-07T12:54:43Z Commit & Push: feat: harden welcome validation and add config validator (3bf0da1) を main へ push 済み。",
+    "2025-11-07T12:58:03Z Checklist Update: chore: mark 20251107 checklist complete (8cd907f) で tasks.md を完了状態に更新。"
   ]
 }
