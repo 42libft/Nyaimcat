@@ -52,3 +52,7 @@
 ## 改善メモ（20251108_codex-autonomous-workflow-2）
 - Orchestrator を CI に組み込み、push 失敗時の再試行/通知を自動化
 - Discord 通知ユーティリティ（bot-runtime/src/codex/discordActions.ts）の Python 連携レイヤー検討
+### 2025-11-08 Orchestrator Lite（20251108_codex-autonomous-workflow-3）
+- 改善案: `.workflow-sessions` に Lite 雛形テンプレートを追加（01/02/04/05 の最小雛形と session_status）。
+- 改善案: 03_review.md 生成時に `git diff --name-status` の集計と要約（追加/更新/削除件数）を自動化するヘルパーを docs/codex に追加。
+- 備考: ドキュメント中心のサイクルでも差分の可視化を標準化してレビュ効率を上げる。
