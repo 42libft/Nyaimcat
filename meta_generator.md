@@ -48,3 +48,7 @@
 \n+## メモ（2025-11-08 再実行）
 - セッションログ（`.workflow-sessions`）のコミット運用は現行どおり「ignore だが必要時は強制 add」で運用。次サイクルで明文化し、テンプレート例外 or ログ全量コミットの方針を確定する。
 11. `.workflow-sessions` の commit/ignore 方針を整理し、テンプレートのみ例外コミットするか、セッションログを随時コミットするかの運用をドキュメント化する。（優先度: 中）
+
+## 改善メモ（20251108_codex-autonomous-workflow-2）
+- Orchestrator を CI に組み込み、push 失敗時の再試行/通知を自動化
+- Discord 通知ユーティリティ（bot-runtime/src/codex/discordActions.ts）の Python 連携レイヤー検討
