@@ -74,6 +74,13 @@
 4. [x] `.workflow-sessions/20251107_codex-autonomous-workflow-1` の各フェーズログ・`session_status.json`・`meta_generator.md` を更新し、フォローアップタスク（E2E テストや追加 CI 項目）を整理する。
 5. [x] 差分をレビューし、`pytest` / `npm --prefix bot-runtime run config:validate` を実行後にコミット・プッシュする。（179caa1）
 
+## 2025-11-08 Orchestrator 再実行（文書整合とログ更新）
+- [ ] Plan Reader: 01_requirements.md と session_status.json を更新
+- [ ] Task Executor: 04_implementation.md を本日の実装手順で更新
+- [ ] Repo Rebuilder: 02_design.md を方針（ドキュメント中心）で更新
+- [ ] Commit & Review: 03_review.md に差分所見とコミット範囲を記載
+- [ ] Reflection / Meta: 05_documentation.md に反映内容を記載。必要に応じて docs/codex_agent_plan.md と meta_generator.md を更新
+
 ## 2025-11-08 Orchestrator（整合性確認・ドキュメント反映）
 - [x] Plan Reader: 本セッションのゴールを 01_requirements.md と session_status.json に反映する
 - [x] Task Executor: 本日の実装手順を `.workflow-sessions/20251108_codex-autonomous-workflow/04_implementation.md` に記載する
