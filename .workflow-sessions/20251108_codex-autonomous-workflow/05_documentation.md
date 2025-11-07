@@ -1,14 +1,13 @@
-# ドキュメント反映テンプレート
-
-Documenter は公開資料と内部ドキュメントの更新内容をここにまとめます。
+# ドキュメント反映（20251108_codex-autonomous-workflow）
 
 ## 更新内容
-- README: 
-- docs/: 
-- .codex/: 
+- .workflow-sessions/20251108_codex-autonomous-workflow: 01〜05_* を本セッション内容で更新
+- tasks.md: 2025-11-08 チェックリストを追加
+- plan.md / docs/codex_agent_plan.md / meta_generator.md: 今回は差分混在回避のため最小限更新（次サイクルでの追記を推奨）
 
 ## リリースノート案
-- ユーザー向けに通知すべき変更点。
+- 内部運用: Orchestrator セッションを一巡し、ワークフロー記録を整備（ドキュメントのみ、機能影響なし）
 
 ## 残タスク
-- 追加で必要な整備やフォローアップ。
+- plan.md への進捗追記（未コミット差分と分離した上で別コミットにて）
+- `.workflow-sessions` のコミット運用ルール（ignore 設定と例外の整合）を次サイクルで明確化

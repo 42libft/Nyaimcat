@@ -45,3 +45,4 @@
 8. セッション初期化スクリプトでドキュメントテンプレートにガイド文を埋め込み、Reflection Logger が毎回テンプレートから書き換える手間を削減する。（優先度: 中）
 9. Codex 運用タスクセクションで扱うバックログと `docs/plans.md` の優先課題を突き合わせるチェックリストを Reflection Logger に追加する。（優先度: 低）
 10. Pydantic v2 の `FieldValidationInfo` 非推奨警告を解消し、`ValidationInfo` への置き換えと単体テスト更新を進める。（優先度: 中）
+11. `.workflow-sessions` の commit/ignore 方針を整理し、テンプレートのみ例外コミットするか、セッションログを随時コミットするかの運用をドキュメント化する。（優先度: 中）

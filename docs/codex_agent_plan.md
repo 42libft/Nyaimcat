@@ -237,3 +237,6 @@
 1. ✅ 永続化したヘルスチェック履歴を集計・可視化するダッシュボード（例: `tasks/runs/health/` ビューア）を設計し、運用向けに公開する。
 2. ✅ `health/alerts` と `collectHealthIssueSummary` のユニットテスト／統合テストを整備し、`npm test` で通知フォーマットやレート制御の回帰を検出できるようにした。（2025-10-18）
 3. ✅ Slash コマンド失敗時に再試行ガイダンスや Runbook への導線を追加し、利用者フィードバックを強化した。（2025-10-18）
+\n## 最新の進捗（2025-11-08）
+- Orchestrator を一巡し、`.workflow-sessions/20251108_codex-autonomous-workflow` に各フェーズログを整備。`tasks.md` へチェックリストを追加。
+- plan.md への追記は他の未コミット差分を分離後に実施する方針。`.workflow-sessions` の commit/ignore 方針を次サイクルで明確化する。
