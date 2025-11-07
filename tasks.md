@@ -66,3 +66,10 @@
 3. [x] Bot ランタイム: `src/config/schema.ts` に文字列トリム＋デフォルト適用レイヤーを追加し、新規 CLI `npm run config:validate`（`ts-node src/cli/configValidate.ts`）で設定検証が実行できるようにする。
 4. [x] ドキュメント＆セッションログ: `.workflow-sessions/20251107_codex-autonomous-workflow/*.md`、`plan.md`、`docs/plans.md`、`docs/codex_agent_plan.md`、`meta_generator.md` へ成果と残タスクを反映する。
 5. [x] Commit & Push: 差分レビュー、`npm --prefix bot-runtime run config:validate` 実行結果の記載、`git commit` / `git push` 完了。
+
+## 2025-11-07 Orchestrator（CI hardening フォローアップ）
+1. [x] FastAPI 管理 API の空文字ガード（Welcome タイトル／member_count_strategy）を `pytest` で再現し、テストケースを追加する。
+2. [x] `.github/workflows/codex-queue-harness.yml` に `npm --prefix bot-runtime run config:validate` を組み込み、CI で設定ファイル破損を検出できるようにする。
+3. [x] README / plan / docs に設定検証手順と CI フックを追記し、オペレーションガイドを更新する。
+4. [x] `.workflow-sessions/20251107_codex-autonomous-workflow-1` の各フェーズログ・`session_status.json`・`meta_generator.md` を更新し、フォローアップタスク（E2E テストや追加 CI 項目）を整理する。
+5. [ ] 差分をレビューし、`pytest` / `npm --prefix bot-runtime run config:validate` を実行後にコミット・プッシュする。

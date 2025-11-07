@@ -63,6 +63,21 @@ def test_welcome_preview_embed(client: TestClient, auth_headers: Dict[str, str])
     assert preview["embed"]["description"]
 
 
+def test_welcome_post_rejects_blank_title(
+    client: TestClient, auth_headers: Dict[str, str]
+) -> None:
+    resp = client.post(
+        "/api/welcome.post",
+        json={"channel_id": "444", "title_template": "   "},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["ok"] is False
+    assert "Validation error" in body["error"]
+    assert "title_template" in body["error"]
+
+
 def test_guideline_template_roundtrip(client: TestClient, auth_headers: Dict[str, str]) -> None:
     save_resp = client.post(
         "/api/guideline.save",
@@ -156,6 +171,21 @@ def test_rag_config_lifecycle(
     saved = confirm_resp.json()["data"]["config"]
     assert saved["short_term"]["excluded_channels"] == ["123456789012345678"]
     assert saved["feelings"]["probability"] == 0.4
+
+
+def test_settings_reject_invalid_member_count_strategy(
+    client: TestClient, auth_headers: Dict[str, str]
+) -> None:
+    resp = client.post(
+        "/api/settings.save",
+        json={"member_count_strategy": "   "},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["ok"] is False
+    assert "Validation error" in body["error"]
+    assert "member_count_strategy" in body["error"]
 
 
 def test_rag_knowledge_add_creates_file(

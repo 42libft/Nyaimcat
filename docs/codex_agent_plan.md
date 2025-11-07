@@ -139,6 +139,12 @@
 - `.workflow-sessions/20251104_codex-autonomous-workflow/` に各フェーズログ（要件・設計・実装・レビュー・ドキュメント）を追記し、自己駆動サイクルのトレーサビリティを確保した。
 - フォローアップとして Dashboard 側の空文字バリデーション追加と、Schema 側のトリム／デフォルト適用ロジックを Meta Generator で優先順位付けする。
 
+## 最新の進捗（2025-11-07 Orchestrator セッション - CI hardening）
+- FastAPI `welcome.post` / `settings.save` の空文字バリデーションを pytest で再現する回帰テストを追加し、API レイヤーでの再発防止を自動化。
+- `.github/workflows/codex-queue-harness.yml` に `npm run config:validate` を追加し、Push / PR / schedule で必ず YAML 検証を実行するガードを構築。ローカルでも `npm --prefix bot-runtime run config:validate` を標準コマンドとして共有。
+- README の Node ランタイムセクションへ設定検証 CLI と CI 連携の手順を追記し、手動オペレーションでも迷わないガイドラインを整備。
+- `plan.md` / `docs/plans.md` / `tasks.md` / `.workflow-sessions/20251107_codex-autonomous-workflow-1` に今回の成果とフォローアップ（Dashboard E2E テスト等）を反映。
+
 ## 最新の進捗（2025-11-07 Orchestrator セッション）
 - Dashboard `SettingsSection` で `member_count_strategy` を `human_only | include_bots` のみに制限し、`WelcomeSection` に Embed/Card タイトルと背景画像のローカルバリデーションを追加した。
 - FastAPI `schemas.py` の `MemberCountStrategy` 列挙を Bot ランタイムと揃え、Welcome タイトルをトリム＋必須化。旧値（`all_members` / `boosters_priority`）は自動的に `include_bots` へフォールバックするようにした。

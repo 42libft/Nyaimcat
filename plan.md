@@ -11,6 +11,7 @@
 
 ## 進捗メモ
 - 2025-11-07: Dashboard / FastAPI / bot-runtime の 3 層で `member_count_strategy` と Welcome タイトルの空文字ガードを実装し、`npm run config:validate` CLI を追加。`.workflow-sessions/20251107_*` にログを残し、`tasks.md` のチェックリストを更新。
+- 2025-11-07: FastAPI の `welcome.post` / `settings.save` を対象に空文字入力の回帰テストを追加し、`codex-queue-harness` workflow に `npm run config:validate` を組み込み。README へ設定検証コマンドの使い方と CI 連携を追記。
 - 2025-11-04: `bot-runtime/config/config.yaml` の `member_count_strategy` を `include_bots` へ修正し、Welcome カードの `title_template` を復旧。`npx ts-node` で `loadConfig` のバリデーション通過を確認し、セッションログ（20251104_codex-autonomous-workflow）へ記録。
 - 2025-11-01: 起動エラー（bot-runtime 設定バリデーション失敗）を調査し、修正計画を作成。下記「緊急対応計画」に詳細を記載。
 - 2025-11-03: プロンプト作成タスクを開始。`tasks.md` に実行ステップを登録。

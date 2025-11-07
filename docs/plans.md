@@ -79,12 +79,13 @@
   - [x] `config.yaml` の `member_count_strategy` を `include_bots` へ修正し、実環境の意図とスキーマ許容値を一致させた。（2025-11-04）
   - [x] `npx ts-node -e "const { loadConfig } = require('./src/config/loader'); ..."` を実行し、`loadConfig` が `ok: true` を返すことを確認した。（2025-11-04）
   - [x] Dashboard / FastAPI / bot-runtime で `member_count_strategy` と Welcome タイトルの空文字ガード、および `npm run config:validate` CLI を実装。（2025-11-07）
+  - [x] FastAPI 管理 API のバリデーションを pytest で回帰テストに追加し、`welcome.post` と `settings.save` の空文字拒否を自動化。併せて README / CI へ `config:validate` の運用手順を明文化。（2025-11-07）
 - **フォローアップ**
   - [x] Dashboard 設定フォームと API で `member_count_strategy` / `title_template` の空文字や未定義値をブロックするバリデーションを追加する。（2025-11-07）
   - [x] `schema.ts` 側でトリム＋デフォルト適用のサニタイズを導入し、空文字のままでも安全に補正できるようにする。（2025-11-07）
   - [x] `package.json` に `config:validate` スクリプトを追加し、CI / ローカルで設定バリデーションを即座に実行できるようにする。（2025-11-07）
-  - [ ] Dashboard フォームと FastAPI に追加したバリデーションを E2E / API テストで自動検証する。
-  - [ ] `config:validate` を GitHub Actions (lint/test) に組み込み、PR 時に自動実行する。
+  - [ ] Dashboard フォームと FastAPI に追加したバリデーションを E2E / API テストで自動検証する。（API テストは 2025-11-07 に追加済み。Dashboard UI の E2E テストは未着手）
+  - [x] `config:validate` を GitHub Actions (lint/test) に組み込み、PR 時に自動実行する。（codex-queue-harness へ追加、2025-11-07）
 
 ## 中期課題（バックエンド・フロントエンド）
 - **管理 API の永続化と監査拡張**  

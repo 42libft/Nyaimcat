@@ -15,6 +15,20 @@
 - `data/escl/`: 収集した ESCL API ダンプ（`raw/`）、スクリーンショット（`screenshots/`）、生成物（`exports/`）の保管場所。
 - `tests/`: Python 側のユニットテスト。
 
+## 🔧 開発ワークフロー（AI運用ガイド）
+
+このプロジェクトでは、CodeXによる自動開発ワークフローを採用しています。  
+詳細な構造とルールは、以下を参照してください。
+
+👉 [.codex/CODEX_GUIDE.md](.codex/CODEX_GUIDE.md)
+
+新規作業セッションは Orchestrator が自動生成しますが、手動で起動したい場合は次のコマンドを利用できます。
+
+```bash
+python scripts/create_workflow_session.py <topic_slug>
+```
+※ `<topic_slug>` を省略すると `codex_session` が使用されます。
+
 ## Python 環境セットアップ
 1. Python 3.10 以上を用意します。
 2. 依存関係をインストールします。
@@ -127,6 +141,7 @@ cp .env.example .env
 - `npm run dev`: `ts-node-dev` によるホットリロード起動
 - `npm run build`: TypeScript を `dist/` にビルド
 - `npm start`: ビルド済み `dist/index.js` を実行
+- `npm run config:validate`: `bot-runtime/config/config.yaml` を読み込み、Zod スキーマで検証します。ルートから実行する場合は `npm --prefix bot-runtime run config:validate` を利用してください。GitHub Actions (`codex-queue-harness` workflow) でもこのコマンドを実行し、設定ファイル破損をブロックします。
 
 ### Slash コマンドガイド
 

@@ -36,5 +36,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate bot configuration
+        run: npm run config:validate
+
       - name: Run Codex queue harness
         run: npm run codex-queue-harness
