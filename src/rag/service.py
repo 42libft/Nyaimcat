@@ -247,7 +247,13 @@ class RagService:
             for idx, chunk in enumerate(knowledge_chunks, start=1):
                 metadata = chunk.get("metadata") or {}
                 title = metadata.get("title") or f"参考情報{idx}"
-                tags = metadata.get("tags") or []
+                raw_tags = metadata.get("tags")
+                if isinstance(raw_tags, str):
+                    tags = [tag.strip() for tag in raw_tags.split(",") if tag.strip()]
+                elif isinstance(raw_tags, (list, tuple, set)):
+                    tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
+                else:
+                    tags = []
                 header = title
                 if tags:
                     header += f" (tags: {', '.join(tags)})"
@@ -263,7 +269,7 @@ class RagService:
         doc_id = doc_id or f"memo-{len(self.loaded_documents)+1}"
         metadata = {
             "title": registration.title,
-            "tags": registration.tags,
+            "tags": ", ".join(registration.tags) if registration.tags else None,
             "source_path": registration.source_path,
         }
         self.chroma.add_documents(

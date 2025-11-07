@@ -45,7 +45,7 @@ def _dump_model(model: Optional[BaseModel]) -> Optional[Dict[str, Any]]:
 
     if model is None:
         return None
-    return model.model_dump(mode="json", exclude_none=True)
+    return model.model_dump(mode="json")
 
 
 DEFAULT_RAG_PROMPT_BASE = (

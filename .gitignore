@@ -39,3 +39,8 @@ Thumbs.db
 
 # Codex run history
 tasks/runs/
+
+# Workflow session logs
+.workflow-sessions/*
+!.workflow-sessions/.template/
+!.workflow-sessions/.template/**
