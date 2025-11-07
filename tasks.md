@@ -72,4 +72,4 @@
 2. [x] `.github/workflows/codex-queue-harness.yml` に `npm --prefix bot-runtime run config:validate` を組み込み、CI で設定ファイル破損を検出できるようにする。
 3. [x] README / plan / docs に設定検証手順と CI フックを追記し、オペレーションガイドを更新する。
 4. [x] `.workflow-sessions/20251107_codex-autonomous-workflow-1` の各フェーズログ・`session_status.json`・`meta_generator.md` を更新し、フォローアップタスク（E2E テストや追加 CI 項目）を整理する。
-5. [ ] 差分をレビューし、`pytest` / `npm --prefix bot-runtime run config:validate` を実行後にコミット・プッシュする。
+5. [x] 差分をレビューし、`pytest` / `npm --prefix bot-runtime run config:validate` を実行後にコミット・プッシュする。（179caa1）
